@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { UserCog } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import { updatePesertaAction, deletePesertaAction } from "@/lib/actions/peserta";
@@ -8,6 +8,11 @@ import { ResetPasswordButton } from "@/components/reset-password-button";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { PendaftaranStatusBadge } from "@/components/status-badge";
 import { formatDateTime } from "@/lib/format";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
+import { BackLink } from "@/components/ui/back-link";
+import { buttonVariants } from "@/components/ui/button";
+import { sectionLabelClass, tableWrapperClass, tableClass, theadClass, thClass, tbodyClass, trClass, tdClass } from "@/components/ui/styles";
 
 export default async function PesertaDetailPage({
   params,
@@ -34,24 +39,17 @@ export default async function PesertaDetailPage({
   const updateAction = updatePesertaAction.bind(null, peserta.id);
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <Link
-          href="/admin/peserta"
-          className="text-sm text-slate-500 hover:text-slate-800"
-        >
-          ← Kembali ke daftar peserta
-        </Link>
-        <h2 className="mt-1 text-lg font-semibold text-slate-900">
-          {peserta.namaLengkap}
-        </h2>
-        <p className="text-sm text-slate-500">{peserta.user.email}</p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <BackLink href="/admin/peserta">Kembali ke daftar peserta</BackLink>
 
-      <section className="flex flex-col gap-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Ubah Data
-        </h3>
+      <PageHeader
+        title={peserta.namaLengkap}
+        subtitle={peserta.user.email}
+        icon={<UserCog className="h-5 w-5" />}
+      />
+
+      <ContentCard className="flex flex-col gap-4">
+        <h3 className={sectionLabelClass}>Ubah Data</h3>
         <PesertaForm
           action={updateAction}
           submitLabel="Simpan Perubahan"
@@ -64,43 +62,39 @@ export default async function PesertaDetailPage({
             jenisPeserta: peserta.jenisPeserta,
           }}
         />
-      </section>
+      </ContentCard>
 
-      <section className="flex flex-col gap-3 border-t border-slate-200 pt-6">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Akun & Keamanan
-        </h3>
+      <ContentCard className="flex flex-col gap-3">
+        <h3 className={sectionLabelClass}>Akun &amp; Keamanan</h3>
         <ResetPasswordButton pesertaId={peserta.id} />
-      </section>
+      </ContentCard>
 
-      <section className="flex flex-col gap-3 border-t border-slate-200 pt-6">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Riwayat Kegiatan
-        </h3>
+      <ContentCard className="flex flex-col gap-3" padded={false}>
+        <h3 className={`${sectionLabelClass} px-6 pt-6`}>Riwayat Kegiatan</h3>
         {peserta.pendaftaran.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="px-6 pb-6 text-sm text-slate-500">
             Peserta ini belum pernah mendaftar kegiatan.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+          <div className={`${tableWrapperClass} border-none shadow-none`}>
+            <table className={tableClass}>
+              <thead className={theadClass}>
                 <tr>
-                  <th className="px-4 py-3">Kegiatan</th>
-                  <th className="px-4 py-3">Tanggal Daftar</th>
-                  <th className="px-4 py-3">Status</th>
+                  <th className={thClass}>Kegiatan</th>
+                  <th className={thClass}>Tanggal Daftar</th>
+                  <th className={thClass}>Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className={tbodyClass}>
                 {peserta.pendaftaran.map((p) => (
-                  <tr key={p.id}>
-                    <td className="px-4 py-3 font-medium text-slate-900">
+                  <tr key={p.id} className={trClass}>
+                    <td className={`${tdClass} font-medium text-slate-900`}>
                       {p.kegiatan.judul}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className={`${tdClass} text-slate-600`}>
                       {formatDateTime(p.tanggalDaftar)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className={tdClass}>
                       <PendaftaranStatusBadge status={p.status} />
                     </td>
                   </tr>
@@ -109,18 +103,18 @@ export default async function PesertaDetailPage({
             </table>
           </div>
         )}
-      </section>
+      </ContentCard>
 
-      <section className="border-t border-slate-200 pt-6">
+      <ContentCard>
         <form action={deletePesertaAction.bind(null, peserta.id)}>
           <ConfirmSubmitButton
             confirmText={`Hapus peserta "${peserta.namaLengkap}"? Data pendaftaran terkait akan ikut terhapus.`}
-            className="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+            className={buttonVariants({ variant: "danger" })}
           >
             Hapus Peserta
           </ConfirmSubmitButton>
         </form>
-      </section>
+      </ContentCard>
     </div>
   );
 }

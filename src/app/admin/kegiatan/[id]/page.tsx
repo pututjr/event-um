@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CalendarCog } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import { updateKegiatanAction, deleteKegiatanAction } from "@/lib/actions/kegiatan";
@@ -7,6 +7,20 @@ import { KegiatanForm } from "@/components/kegiatan-form";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { PendaftaranStatusSelect } from "@/components/pendaftaran-status-select";
 import { formatDateTime, toDatetimeLocalValue } from "@/lib/format";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
+import { BackLink } from "@/components/ui/back-link";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  sectionLabelClass,
+  tableWrapperClass,
+  tableClass,
+  theadClass,
+  thClass,
+  tbodyClass,
+  trClass,
+  tdClass,
+} from "@/components/ui/styles";
 
 export default async function KegiatanDetailPage({
   params,
@@ -32,23 +46,13 @@ export default async function KegiatanDetailPage({
   const updateAction = updateKegiatanAction.bind(null, kegiatan.id);
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <Link
-          href="/admin/kegiatan"
-          className="text-sm text-slate-500 hover:text-slate-800"
-        >
-          ← Kembali ke daftar kegiatan
-        </Link>
-        <h2 className="mt-1 text-lg font-semibold text-slate-900">
-          {kegiatan.judul}
-        </h2>
-      </div>
+    <div className="flex flex-col gap-6">
+      <BackLink href="/admin/kegiatan">Kembali ke daftar kegiatan</BackLink>
 
-      <section className="flex flex-col gap-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Ubah Data Kegiatan
-        </h3>
+      <PageHeader title={kegiatan.judul} icon={<CalendarCog className="h-5 w-5" />} />
+
+      <ContentCard className="flex flex-col gap-4">
+        <h3 className={sectionLabelClass}>Ubah Data Kegiatan</h3>
         <KegiatanForm
           action={updateAction}
           submitLabel="Simpan Perubahan"
@@ -63,40 +67,40 @@ export default async function KegiatanDetailPage({
             status: kegiatan.status,
           }}
         />
-      </section>
+      </ContentCard>
 
-      <section className="flex flex-col gap-3 border-t border-slate-200 pt-6">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+      <ContentCard className="flex flex-col gap-3" padded={false}>
+        <h3 className={`${sectionLabelClass} px-6 pt-6`}>
           Peserta Terdaftar ({kegiatan.pendaftaran.length})
         </h3>
         {kegiatan.pendaftaran.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="px-6 pb-6 text-sm text-slate-500">
             Belum ada peserta yang mendaftar kegiatan ini.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+          <div className={`${tableWrapperClass} border-none shadow-none`}>
+            <table className={tableClass}>
+              <thead className={theadClass}>
                 <tr>
-                  <th className="px-4 py-3">Nama</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Tanggal Daftar</th>
-                  <th className="px-4 py-3">Status</th>
+                  <th className={thClass}>Nama</th>
+                  <th className={thClass}>Email</th>
+                  <th className={thClass}>Tanggal Daftar</th>
+                  <th className={thClass}>Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className={tbodyClass}>
                 {kegiatan.pendaftaran.map((p) => (
-                  <tr key={p.id}>
-                    <td className="px-4 py-3 font-medium text-slate-900">
+                  <tr key={p.id} className={trClass}>
+                    <td className={`${tdClass} font-medium text-slate-900`}>
                       {p.peserta.namaLengkap}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className={`${tdClass} text-slate-600`}>
                       {p.peserta.user.email}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className={`${tdClass} text-slate-600`}>
                       {formatDateTime(p.tanggalDaftar)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className={tdClass}>
                       <PendaftaranStatusSelect
                         pendaftaranId={p.id}
                         status={p.status}
@@ -108,18 +112,18 @@ export default async function KegiatanDetailPage({
             </table>
           </div>
         )}
-      </section>
+      </ContentCard>
 
-      <section className="border-t border-slate-200 pt-6">
+      <ContentCard>
         <form action={deleteKegiatanAction.bind(null, kegiatan.id)}>
           <ConfirmSubmitButton
             confirmText={`Hapus kegiatan "${kegiatan.judul}"? Seluruh data pendaftaran terkait akan ikut terhapus.`}
-            className="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+            className={buttonVariants({ variant: "danger" })}
           >
             Hapus Kegiatan
           </ConfirmSubmitButton>
         </form>
-      </section>
+      </ContentCard>
     </div>
   );
 }

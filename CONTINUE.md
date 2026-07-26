@@ -17,6 +17,71 @@ Jika project "Sprint 1" yang sebenarnya ternyata ada di lokasi/repo lain,
 pertimbangkan untuk membandingkan/merge alih-alih melanjutkan dari baseline
 ini.
 
+## UI Refactor — Design System "Prakerin" — Selesai (2026-07-27)
+
+Refactor tampilan murni (visual-only) di seluruh aplikasi agar konsisten
+dengan nuansa dashboard Prakerin. **Tidak ada perubahan** pada business
+logic, skema database, Prisma, routing, atau authentication — hanya markup
+JSX dan className yang diubah/diganti dengan komponen UI bersama.
+
+### Design tokens
+- [src/app/globals.css](src/app/globals.css): warna `navy` (#12304A),
+  `navy-light`, `navy-dark`, `page` (#F5F7FB) didaftarkan sebagai Tailwind
+  utility lewat `@theme`. Mode dark otomatis (`prefers-color-scheme`)
+  dihapus — dashboard ini memakai tema terang tetap, konsisten dengan
+  referensi desain.
+- Icon: [lucide-react](https://lucide.dev/) dipakai di sidebar, tombol, dan
+  stat card.
+
+### Komponen UI bersama (baru) — `src/components/ui/`
+- `styles.ts` — konstanta className (input, select, textarea, table, card)
+- `button.tsx` / `link-button.tsx` — varian primary (navy) / secondary
+  (putih border abu) / danger (merah) / success (hijau)
+- `page-header.tsx` — header card gradient biru tua per halaman
+- `content-card.tsx` — card putih rounded-xl shadow tipis border tipis
+- `action-bar.tsx` — baris aksi (search + tombol)
+- `stat-card.tsx` — card statistik berwarna (blue/purple/green/pink)
+- `form-field.tsx` — input/select/textarea seragam (lebih tinggi, radius 10px)
+- `back-link.tsx` — link "kembali" dengan ikon panah
+
+### Layout baru — `src/components/layout/`
+- `sidebar.tsx` — sidebar kiri fixed biru tua (`#12304A`) untuk desktop/
+  tablet, dengan fallback top bar horizontal untuk mobile (nav + logout tetap
+  bisa diakses, sesuai arahan "mobile cukup usable")
+- `page-shell.tsx` — pembungkus konten di kanan sidebar
+- `src/components/app-shell.tsx` (versi lama, top nav) **dihapus**,
+  digantikan sepenuhnya oleh `PageShell` + `Sidebar`
+
+### Halaman yang direstyle (logika/query/action tidak diubah)
+Login, Admin (Peserta: list/baru/detail/import — termasuk halaman template
+xlsx tidak disentuh karena itu route handler biner, bukan tampilan; Kegiatan:
+list/baru/detail), Dashboard Peserta (Ringkasan, Riwayat Kegiatan, Kegiatan
+Aktif, Sertifikat Saya, Profil). Semua memakai pola yang sama: Sidebar tetap
+(dari layout) → `PageHeader` → (opsional) `StatCard` → `ActionBar` → `Content
+Card`/tabel.
+
+### Perubahan kecil yang murni presentasional
+- `src/lib/labels.ts` (baru): peta label `JenisPeserta` ("Mahasiswa", dst.)
+  dipakai bersama oleh halaman admin Peserta dan Profil peserta (sebelumnya
+  duplikat inline di `dashboard/profil/page.tsx`) — nilai/enum tidak berubah,
+  hanya cara menampilkannya.
+- `status-badge.tsx`, `pendaftaran-status-select.tsx`,
+  `reset-password-button.tsx`: className diperbarui ke gaya baru, prop/
+  behavior tidak berubah.
+
+### Verifikasi
+- `npm run lint` — bersih.
+- `npm run build` — sukses, seluruh route tetap dinamis seperti sebelumnya
+  (tidak ada perubahan routing).
+- Smoke test browser (login admin & peserta, list/detail Peserta & Kegiatan,
+  ke-5 halaman Dashboard Peserta) — struktur & data tampil benar, tidak ada
+  error console. Layout mobile (375px) dicek: top bar navigasi dan form
+  tetap dapat diakses.
+- Screenshot visual **tidak** bisa diambil pada sesi ini (Browser pane tidak
+  ditampilkan di sisi pengguna) — verifikasi dilakukan lewat pembacaan
+  struktur DOM/teks halaman. Disarankan pengguna mengecek tampilan secara
+  visual langsung sekali sebelum dianggap final.
+
 ## Sprint 2.5 — Selesai (2026-07-27)
 
 Fokus murni infrastruktur: migrasi database dari SQLite ke PostgreSQL

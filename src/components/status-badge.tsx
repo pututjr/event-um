@@ -6,6 +6,12 @@ const pendaftaranStyle: Record<StatusPendaftaran, string> = {
   SERTIFIKAT_TERBIT: "bg-emerald-100 text-emerald-800",
 };
 
+const pendaftaranDot: Record<StatusPendaftaran, string> = {
+  TERDAFTAR: "bg-amber-500",
+  HADIR: "bg-blue-500",
+  SERTIFIKAT_TERBIT: "bg-emerald-500",
+};
+
 const pendaftaranLabel: Record<StatusPendaftaran, string> = {
   TERDAFTAR: "Terdaftar",
   HADIR: "Hadir",
@@ -19,8 +25,9 @@ export function PendaftaranStatusBadge({
 }) {
   return (
     <span
-      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${pendaftaranStyle[status]}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${pendaftaranStyle[status]}`}
     >
+      <span className={`h-1.5 w-1.5 rounded-full ${pendaftaranDot[status]}`} />
       {pendaftaranLabel[status]}
     </span>
   );
@@ -32,6 +39,12 @@ const kegiatanStyle: Record<StatusKegiatan, string> = {
   DIBATALKAN: "bg-red-100 text-red-800",
 };
 
+const kegiatanDot: Record<StatusKegiatan, string> = {
+  AKTIF: "bg-emerald-500",
+  SELESAI: "bg-slate-500",
+  DIBATALKAN: "bg-red-500",
+};
+
 const kegiatanLabel: Record<StatusKegiatan, string> = {
   AKTIF: "Aktif",
   SELESAI: "Selesai",
@@ -41,8 +54,9 @@ const kegiatanLabel: Record<StatusKegiatan, string> = {
 export function KegiatanStatusBadge({ status }: { status: StatusKegiatan }) {
   return (
     <span
-      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${kegiatanStyle[status]}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${kegiatanStyle[status]}`}
     >
+      <span className={`h-1.5 w-1.5 rounded-full ${kegiatanDot[status]}`} />
       {kegiatanLabel[status]}
     </span>
   );

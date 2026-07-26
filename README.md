@@ -8,6 +8,7 @@ Sistem manajemen kegiatan dan peserta untuk Universitas Negeri Malang.
 - [Prisma 6](https://www.prisma.io/) + [PostgreSQL via Supabase](https://supabase.com/)
 - [Auth.js / NextAuth v5](https://authjs.dev/) — autentikasi credentials (email + password)
 - [Tailwind CSS 4](https://tailwindcss.com/)
+- [Lucide Icons](https://lucide.dev/) — ikon di sidebar, tombol, dan stat card
 - [SheetJS (`xlsx`)](https://github.com/SheetJS/sheetjs) — import data peserta dari Excel
 - [Zod](https://zod.dev/) + [React Hook Form](https://react-hook-form.com/) helpers untuk validasi
 
@@ -17,6 +18,16 @@ Sistem manajemen kegiatan dan peserta untuk Universitas Negeri Malang.
 
 > Sejak Sprint 2.5, database menggunakan **PostgreSQL (Supabase)**, bukan SQLite
 > lagi. Lihat [CONTINUE.md](CONTINUE.md) untuk detail migrasi.
+
+## Design System
+
+Tampilan mengikuti nuansa dashboard "Prakerin": sidebar biru tua (`#12304A`)
+fixed di kiri, header halaman berupa card gradient biru, card statistik
+berwarna (biru/ungu/hijau/pink), background halaman abu sangat muda
+(`#F5F7FB`), card putih dengan shadow tipis dan radius 12px. Komponen UI
+bersama ada di [src/components/ui](src/components/ui) dan layout sidebar di
+[src/components/layout](src/components/layout). Lihat [CONTINUE.md](CONTINUE.md)
+untuk rincian refactor.
 
 ## Database: Supabase PostgreSQL
 

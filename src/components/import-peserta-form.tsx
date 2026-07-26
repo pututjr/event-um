@@ -1,11 +1,14 @@
 "use client";
 
 import { useActionState } from "react";
+import { UploadCloud } from "lucide-react";
 
 import {
   importPesertaAction,
   type ImportState,
 } from "@/lib/actions/import-peserta";
+import { buttonVariants } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/styles";
 
 const initialState: ImportState = {};
 
@@ -27,24 +30,25 @@ export function ImportPesertaForm() {
           name="file"
           accept=".xlsx,.xls"
           required
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+          className="rounded-[10px] border border-slate-300 bg-white px-3.5 py-2.5 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700"
         />
         {state.error && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="rounded-[10px] border border-red-100 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
             {state.error}
           </p>
         )}
         <button
           type="submit"
           disabled={isPending}
-          className="w-fit rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+          className={buttonVariants({ className: "w-fit" })}
         >
+          <UploadCloud className="h-4 w-4" />
           {isPending ? "Mengimpor..." : "Import Peserta"}
         </button>
       </form>
 
       {state.summary && (
-        <div className="max-w-xl rounded-md border border-slate-200 bg-white p-4 text-sm">
+        <div className={`${cardClass} max-w-xl p-5 text-sm`}>
           <p>
             Total baris diproses:{" "}
             <span className="font-medium">{state.summary.total}</span>
@@ -56,7 +60,7 @@ export function ImportPesertaForm() {
             </span>
           </p>
           {state.password && (
-            <p className="mt-2 rounded-md bg-emerald-50 px-3 py-2 text-emerald-800">
+            <p className="mt-3 rounded-[10px] border border-emerald-100 bg-emerald-50 px-3.5 py-2.5 text-emerald-800">
               Password sementara untuk seluruh peserta hasil import:{" "}
               <code className="font-semibold">{state.password}</code>
               <br />

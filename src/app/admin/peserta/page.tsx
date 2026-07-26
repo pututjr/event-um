@@ -1,9 +1,26 @@
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
+import { Users, Upload, Plus, Search } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import { deletePesertaAction } from "@/lib/actions/peserta";
+import { jenisPesertaLabel } from "@/lib/labels";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { PageHeader } from "@/components/ui/page-header";
+import { ActionBar } from "@/components/ui/action-bar";
+import { StatCard } from "@/components/ui/stat-card";
+import { LinkButton } from "@/components/ui/link-button";
+import { inputClass } from "@/components/ui/styles";
+import {
+  tableWrapperClass,
+  tableClass,
+  theadClass,
+  thClass,
+  tbodyClass,
+  trClass,
+  tdClass,
+} from "@/components/ui/styles";
+import { buttonVariants } from "@/components/ui/button";
 
 const PAGE_SIZE = 15;
 
@@ -41,101 +58,102 @@ export default async function AdminPesertaPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900">
-            Data Peserta
-          </h2>
-          <p className="text-sm text-slate-500">{total} peserta terdaftar</p>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            href="/admin/peserta/import"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-          >
-            Import Excel
-          </Link>
-          <Link
-            href="/admin/peserta/baru"
-            className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
-          >
-            + Tambah Peserta
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="Data Peserta"
+        subtitle="Kelola akun dan profil peserta kegiatan"
+        icon={<Users className="h-5 w-5" />}
+        actions={
+          <>
+            <LinkButton href="/admin/peserta/import" variant="secondary">
+              <Upload className="h-4 w-4" />
+              Import Excel
+            </LinkButton>
+            <LinkButton href="/admin/peserta/baru">
+              <Plus className="h-4 w-4" />
+              Tambah Peserta
+            </LinkButton>
+          </>
+        }
+      />
 
-      <form className="flex gap-2">
-        <input
-          type="text"
-          name="q"
-          defaultValue={q ?? ""}
-          placeholder="Cari nama, email, instansi..."
-          className="w-full max-w-sm rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-        />
-        <button
-          type="submit"
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-        >
-          Cari
-        </button>
-      </form>
+      <StatCard
+        label="Total Peserta Terdaftar"
+        value={total}
+        icon={<Users className="h-6 w-6" />}
+        color="blue"
+      />
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+      <ActionBar>
+        <form className="flex w-full max-w-sm gap-2">
+          <div className="relative w-full">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              name="q"
+              defaultValue={q ?? ""}
+              placeholder="Cari nama, email, instansi..."
+              className={`${inputClass} pl-9`}
+            />
+          </div>
+          <button type="submit" className={buttonVariants({ variant: "secondary" })}>
+            Cari
+          </button>
+        </form>
+      </ActionBar>
+
+      <div className={tableWrapperClass}>
+        <table className={tableClass}>
+          <thead className={theadClass}>
             <tr>
-              <th className="px-4 py-3">Nama</th>
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Jenis</th>
-              <th className="px-4 py-3">Instansi / Unit</th>
-              <th className="px-4 py-3">No. HP</th>
-              <th className="px-4 py-3 text-right">Aksi</th>
+              <th className={thClass}>Nama</th>
+              <th className={thClass}>Email</th>
+              <th className={thClass}>Jenis</th>
+              <th className={thClass}>Instansi / Unit</th>
+              <th className={thClass}>No. HP</th>
+              <th className={`${thClass} text-right`}>Aksi</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className={tbodyClass}>
             {pesertaList.length === 0 && (
               <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-8 text-center text-slate-500"
-                >
+                <td colSpan={6} className="px-5 py-10 text-center text-slate-500">
                   Belum ada data peserta.
                 </td>
               </tr>
             )}
             {pesertaList.map((peserta) => (
-              <tr key={peserta.id}>
-                <td className="px-4 py-3 font-medium text-slate-900">
+              <tr key={peserta.id} className={trClass}>
+                <td className={`${tdClass} font-medium text-slate-900`}>
                   {peserta.namaLengkap}
                 </td>
-                <td className="px-4 py-3 text-slate-600">
+                <td className={`${tdClass} text-slate-600`}>
                   {peserta.user.email}
                 </td>
-                <td className="px-4 py-3 text-slate-600">
-                  {peserta.jenisPeserta}
+                <td className={tdClass}>
+                  <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                    {jenisPesertaLabel[peserta.jenisPeserta]}
+                  </span>
                 </td>
-                <td className="px-4 py-3 text-slate-600">
+                <td className={`${tdClass} text-slate-600`}>
                   {[peserta.instansi, peserta.unitProdi]
                     .filter(Boolean)
                     .join(" · ") || "-"}
                 </td>
-                <td className="px-4 py-3 text-slate-600">
+                <td className={`${tdClass} text-slate-600`}>
                   {peserta.noHp || "-"}
                 </td>
-                <td className="px-4 py-3">
+                <td className={tdClass}>
                   <div className="flex justify-end gap-2">
                     <Link
                       href={`/admin/peserta/${peserta.id}`}
-                      className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                      className={buttonVariants({ variant: "secondary", size: "sm" })}
                     >
                       Detail
                     </Link>
-                    <form
-                      action={deletePesertaAction.bind(null, peserta.id)}
-                    >
+                    <form action={deletePesertaAction.bind(null, peserta.id)}>
                       <ConfirmSubmitButton
                         confirmText={`Hapus peserta "${peserta.namaLengkap}"? Data pendaftaran terkait akan ikut terhapus.`}
-                        className="rounded-md border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+                        className={buttonVariants({ variant: "danger", size: "sm" })}
                       >
                         Hapus
                       </ConfirmSubmitButton>
@@ -157,11 +175,11 @@ export default async function AdminPesertaPage({
                 ...(q ? { q } : {}),
                 page: String(p),
               }).toString()}`}
-              className={`rounded-md px-3 py-1.5 ${
+              className={
                 p === currentPage
-                  ? "bg-slate-900 text-white"
-                  : "border border-slate-300 text-slate-700 hover:bg-slate-100"
-              }`}
+                  ? buttonVariants({ size: "sm" })
+                  : buttonVariants({ variant: "secondary", size: "sm" })
+              }
             >
               {p}
             </Link>

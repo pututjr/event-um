@@ -1,7 +1,20 @@
+import { History } from "lucide-react";
+
 import { prisma } from "@/lib/prisma";
 import { getCurrentPeserta } from "@/lib/current-peserta";
 import { PendaftaranStatusBadge } from "@/components/status-badge";
 import { formatDateTime } from "@/lib/format";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
+import {
+  tableWrapperClass,
+  tableClass,
+  theadClass,
+  thClass,
+  tbodyClass,
+  trClass,
+  tdClass,
+} from "@/components/ui/styles";
 
 export default async function RiwayatKegiatanPage() {
   const peserta = await getCurrentPeserta();
@@ -14,45 +27,44 @@ export default async function RiwayatKegiatanPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-lg font-semibold text-slate-900">
-          Riwayat Kegiatan
-        </h2>
-        <p className="text-sm text-slate-500">
-          Daftar kegiatan yang pernah Anda ikuti beserta status terkini.
-        </p>
-      </div>
+      <PageHeader
+        title="Riwayat Kegiatan"
+        subtitle="Daftar kegiatan yang pernah Anda ikuti beserta status terkini"
+        icon={<History className="h-5 w-5" />}
+      />
 
       {pendaftaran.length === 0 ? (
-        <p className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500">
-          Anda belum pernah mendaftar kegiatan apa pun. Lihat{" "}
-          <span className="font-medium">Kegiatan Aktif</span> untuk mulai
-          mendaftar.
-        </p>
+        <ContentCard>
+          <p className="text-sm text-slate-500">
+            Anda belum pernah mendaftar kegiatan apa pun. Lihat{" "}
+            <span className="font-medium">Kegiatan Aktif</span> untuk mulai
+            mendaftar.
+          </p>
+        </ContentCard>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+        <div className={tableWrapperClass}>
+          <table className={tableClass}>
+            <thead className={theadClass}>
               <tr>
-                <th className="px-4 py-3">Kegiatan</th>
-                <th className="px-4 py-3">Tanggal Kegiatan</th>
-                <th className="px-4 py-3">Tanggal Daftar</th>
-                <th className="px-4 py-3">Status</th>
+                <th className={thClass}>Kegiatan</th>
+                <th className={thClass}>Tanggal Kegiatan</th>
+                <th className={thClass}>Tanggal Daftar</th>
+                <th className={thClass}>Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className={tbodyClass}>
               {pendaftaran.map((p) => (
-                <tr key={p.id}>
-                  <td className="px-4 py-3 font-medium text-slate-900">
+                <tr key={p.id} className={trClass}>
+                  <td className={`${tdClass} font-medium text-slate-900`}>
                     {p.kegiatan.judul}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className={`${tdClass} text-slate-600`}>
                     {formatDateTime(p.kegiatan.tanggalMulai)}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className={`${tdClass} text-slate-600`}>
                     {formatDateTime(p.tanggalDaftar)}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className={tdClass}>
                     <PendaftaranStatusBadge status={p.status} />
                   </td>
                 </tr>

@@ -1,17 +1,19 @@
+import { Award } from "lucide-react";
+
+import { PageHeader } from "@/components/ui/page-header";
+
 export default function SertifikatSayaPage() {
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h2 className="text-lg font-semibold text-slate-900">
-          Sertifikat Saya
-        </h2>
-        <p className="text-sm text-slate-500">
-          Fitur unduh sertifikat sedang dalam pengembangan.
-        </p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Sertifikat Saya"
+        subtitle="Fitur unduh sertifikat sedang dalam pengembangan"
+        icon={<Award className="h-5 w-5" />}
+      />
 
-      <div className="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center">
-        <p className="text-sm text-slate-500">
+      <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
+        <Award className="mx-auto h-10 w-10 text-slate-300" />
+        <p className="mt-3 text-sm text-slate-500">
           Segera hadir. Sertifikat kegiatan yang sudah terbit akan tersedia di
           halaman ini pada sprint berikutnya.
         </p>

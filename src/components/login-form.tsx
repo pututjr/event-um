@@ -1,8 +1,11 @@
 "use client";
 
 import { useActionState } from "react";
+import { LogIn } from "lucide-react";
 
 import { loginAction, type LoginState } from "@/lib/actions/auth";
+import { inputClass, labelClass } from "@/components/ui/styles";
+import { buttonVariants } from "@/components/ui/button";
 
 const initialState: LoginState = {};
 
@@ -13,9 +16,9 @@ export function LoginForm() {
   );
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <label htmlFor="email" className="text-sm font-medium text-slate-700">
+    <form action={formAction} className="flex flex-col gap-5">
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="email" className={labelClass}>
           Email
         </label>
         <input
@@ -24,15 +27,12 @@ export function LoginForm() {
           type="email"
           required
           autoComplete="email"
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          className={inputClass}
           placeholder="nama@um.ac.id"
         />
       </div>
-      <div className="flex flex-col gap-1">
-        <label
-          htmlFor="password"
-          className="text-sm font-medium text-slate-700"
-        >
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="password" className={labelClass}>
           Password
         </label>
         <input
@@ -41,13 +41,13 @@ export function LoginForm() {
           type="password"
           required
           autoComplete="current-password"
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          className={inputClass}
           placeholder="••••••••"
         />
       </div>
 
       {state.error && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="rounded-[10px] border border-red-100 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
           {state.error}
         </p>
       )}
@@ -55,8 +55,9 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={isPending}
-        className="mt-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+        className={buttonVariants({ className: "mt-1 w-full" })}
       >
+        <LogIn className="h-4 w-4" />
         {isPending ? "Memproses..." : "Masuk"}
       </button>
     </form>

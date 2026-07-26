@@ -1,22 +1,25 @@
 import Link from "next/link";
+import { FileSpreadsheet, Download } from "lucide-react";
 
 import { ImportPesertaForm } from "@/components/import-peserta-form";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
+import { BackLink } from "@/components/ui/back-link";
 
 export default function ImportPesertaPage() {
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link
-          href="/admin/peserta"
-          className="text-sm text-slate-500 hover:text-slate-800"
-        >
-          ← Kembali ke daftar peserta
-        </Link>
-        <h2 className="mt-1 text-lg font-semibold text-slate-900">
-          Import Peserta dari Excel
-        </h2>
-        <p className="max-w-xl text-sm text-slate-500">
-          Unggah file .xlsx dengan kolom: <strong>Nama Lengkap</strong>,{" "}
+      <BackLink href="/admin/peserta">Kembali ke daftar peserta</BackLink>
+
+      <PageHeader
+        title="Import Peserta dari Excel"
+        subtitle="Unggah file .xlsx untuk menambahkan banyak peserta sekaligus"
+        icon={<FileSpreadsheet className="h-5 w-5" />}
+      />
+
+      <ContentCard className="flex flex-col gap-4">
+        <p className="max-w-xl text-sm text-slate-600">
+          Kolom yang dibutuhkan: <strong>Nama Lengkap</strong>,{" "}
           <strong>Email</strong>, No HP, Instansi, Unit/Prodi, dan Jenis
           Peserta (MAHASISWA / DOSEN / TENDIK / UMUM). Baris dengan email yang
           sudah terdaftar atau data tidak lengkap akan dilewati.
@@ -24,13 +27,16 @@ export default function ImportPesertaPage() {
         <Link
           href="/admin/peserta/import/template"
           prefetch={false}
-          className="mt-2 inline-block text-sm font-medium text-slate-700 underline hover:text-slate-900"
+          className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-navy hover:underline"
         >
+          <Download className="h-4 w-4" />
           Unduh template Excel
         </Link>
-      </div>
 
-      <ImportPesertaForm />
+        <div className="border-t border-slate-200 pt-5">
+          <ImportPesertaForm />
+        </div>
+      </ContentCard>
     </div>
   );
 }

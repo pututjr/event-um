@@ -1,7 +1,12 @@
+import { CalendarCheck2, MapPin, Users } from "lucide-react";
+
 import { prisma } from "@/lib/prisma";
 import { getCurrentPeserta } from "@/lib/current-peserta";
 import { daftarKegiatanAction } from "@/lib/actions/pendaftaran";
 import { formatDateTime } from "@/lib/format";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
+import { buttonVariants } from "@/components/ui/button";
 
 export default async function KegiatanAktifPage() {
   const peserta = await getCurrentPeserta();
@@ -17,19 +22,18 @@ export default async function KegiatanAktifPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-lg font-semibold text-slate-900">
-          Kegiatan Aktif
-        </h2>
-        <p className="text-sm text-slate-500">
-          Kegiatan yang sedang dibuka untuk pendaftaran.
-        </p>
-      </div>
+      <PageHeader
+        title="Kegiatan Aktif"
+        subtitle="Kegiatan yang sedang dibuka untuk pendaftaran"
+        icon={<CalendarCheck2 className="h-5 w-5" />}
+      />
 
       {kegiatanAktif.length === 0 ? (
-        <p className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500">
-          Belum ada kegiatan aktif saat ini.
-        </p>
+        <ContentCard>
+          <p className="text-sm text-slate-500">
+            Belum ada kegiatan aktif saat ini.
+          </p>
+        </ContentCard>
       ) : (
         <div className="flex flex-col gap-4">
           {kegiatanAktif.map((kegiatan) => {
@@ -39,12 +43,12 @@ export default async function KegiatanAktifPage() {
               kegiatan._count.pendaftaran >= kegiatan.kuota;
 
             return (
-              <div
+              <ContentCard
                 key={kegiatan.id}
-                className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
-                  <h3 className="font-medium text-slate-900">
+                  <h3 className="font-semibold text-slate-900">
                     {kegiatan.judul}
                   </h3>
                   {kegiatan.deskripsi && (
@@ -52,11 +56,17 @@ export default async function KegiatanAktifPage() {
                       {kegiatan.deskripsi}
                     </p>
                   )}
-                  <p className="mt-2 text-sm text-slate-600">
-                    {formatDateTime(kegiatan.tanggalMulai)}
-                    {kegiatan.lokasi ? ` · ${kegiatan.lokasi}` : ""}
+                  <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600">
+                    <span>{formatDateTime(kegiatan.tanggalMulai)}</span>
+                    {kegiatan.lokasi && (
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {kegiatan.lokasi}
+                      </span>
+                    )}
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="mt-1 inline-flex items-center gap-1 text-xs text-slate-400">
+                    <Users className="h-3.5 w-3.5" />
                     {kegiatan._count.pendaftaran} peserta terdaftar
                     {kegiatan.kuota ? ` dari kuota ${kegiatan.kuota}` : ""}
                   </p>
@@ -64,25 +74,25 @@ export default async function KegiatanAktifPage() {
 
                 <div className="shrink-0">
                   {sudahDaftar ? (
-                    <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1.5 text-sm font-medium text-emerald-800">
+                    <span className="inline-flex rounded-full bg-emerald-100 px-3.5 py-2 text-sm font-semibold text-emerald-800">
                       Anda sudah terdaftar
                     </span>
                   ) : kuotaPenuh ? (
-                    <span className="inline-flex rounded-full bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600">
+                    <span className="inline-flex rounded-full bg-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-600">
                       Kuota Penuh
                     </span>
                   ) : (
                     <form action={daftarKegiatanAction.bind(null, kegiatan.id)}>
                       <button
                         type="submit"
-                        className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                        className={buttonVariants()}
                       >
                         Daftar
                       </button>
                     </form>
                   )}
                 </div>
-              </div>
+              </ContentCard>
             );
           })}
         </div>

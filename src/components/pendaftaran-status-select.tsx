@@ -24,7 +24,7 @@ export function PendaftaranStatusSelect({
           await updatePendaftaranStatusAction(pendaftaranId, newStatus);
         });
       }}
-      className="rounded-md border border-slate-300 px-2 py-1 text-xs disabled:opacity-60"
+      className="rounded-[8px] border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition-colors focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/10 disabled:opacity-60"
     >
       <option value="TERDAFTAR">Terdaftar</option>
       <option value="HADIR">Hadir</option>
