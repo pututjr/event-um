@@ -7,6 +7,8 @@ export const kegiatanSchema = z
     judul: z.string().trim().min(3, "Judul minimal 3 karakter"),
     deskripsi: z.string().trim().optional().or(z.literal("")),
     lokasi: z.string().trim().optional().or(z.literal("")),
+    narasumber: z.string().trim().optional().or(z.literal("")),
+    jabatanNarasumber: z.string().trim().optional().or(z.literal("")),
     tanggalMulai: z.coerce.date({ message: "Tanggal mulai tidak valid" }),
     tanggalSelesai: z.coerce.date({ message: "Tanggal selesai tidak valid" }),
     kuota: z

@@ -21,6 +21,7 @@ function parsePesertaForm(formData: FormData) {
   return pesertaSchema.safeParse({
     namaLengkap: formData.get("namaLengkap"),
     email: formData.get("email"),
+    gelar: formData.get("gelar"),
     noHp: formData.get("noHp"),
     instansi: formData.get("instansi"),
     unitProdi: formData.get("unitProdi"),
@@ -45,7 +46,7 @@ export async function createPesertaAction(
     };
   }
 
-  const { email, namaLengkap, noHp, instansi, unitProdi, jenisPeserta } =
+  const { email, namaLengkap, gelar, noHp, instansi, unitProdi, jenisPeserta } =
     parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -67,6 +68,7 @@ export async function createPesertaAction(
       peserta: {
         create: {
           namaLengkap,
+          gelar: gelar || null,
           noHp: noHp || null,
           instansi: instansi || null,
           unitProdi: unitProdi || null,
@@ -99,7 +101,7 @@ export async function updatePesertaAction(
     };
   }
 
-  const { email, namaLengkap, noHp, instansi, unitProdi, jenisPeserta } =
+  const { email, namaLengkap, gelar, noHp, instansi, unitProdi, jenisPeserta } =
     parsed.data;
 
   const peserta = await prisma.peserta.findUnique({
@@ -120,6 +122,7 @@ export async function updatePesertaAction(
         where: { id: pesertaId },
         data: {
           namaLengkap,
+          gelar: gelar || null,
           noHp: noHp || null,
           instansi: instansi || null,
           unitProdi: unitProdi || null,

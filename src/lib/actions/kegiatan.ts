@@ -19,6 +19,8 @@ function parseKegiatanForm(formData: FormData) {
     judul: formData.get("judul"),
     deskripsi: formData.get("deskripsi"),
     lokasi: formData.get("lokasi"),
+    narasumber: formData.get("narasumber"),
+    jabatanNarasumber: formData.get("jabatanNarasumber"),
     tanggalMulai: formData.get("tanggalMulai"),
     tanggalSelesai: formData.get("tanggalSelesai"),
     kuota: formData.get("kuota"),
@@ -43,14 +45,25 @@ export async function createKegiatanAction(
     };
   }
 
-  const { judul, deskripsi, lokasi, tanggalMulai, tanggalSelesai, kuota, status } =
-    parsed.data;
+  const {
+    judul,
+    deskripsi,
+    lokasi,
+    narasumber,
+    jabatanNarasumber,
+    tanggalMulai,
+    tanggalSelesai,
+    kuota,
+    status,
+  } = parsed.data;
 
   await prisma.kegiatan.create({
     data: {
       judul,
       deskripsi: deskripsi || null,
       lokasi: lokasi || null,
+      narasumber: narasumber || null,
+      jabatanNarasumber: jabatanNarasumber || null,
       tanggalMulai,
       tanggalSelesai,
       kuota,
@@ -82,8 +95,17 @@ export async function updateKegiatanAction(
     };
   }
 
-  const { judul, deskripsi, lokasi, tanggalMulai, tanggalSelesai, kuota, status } =
-    parsed.data;
+  const {
+    judul,
+    deskripsi,
+    lokasi,
+    narasumber,
+    jabatanNarasumber,
+    tanggalMulai,
+    tanggalSelesai,
+    kuota,
+    status,
+  } = parsed.data;
 
   await prisma.kegiatan.update({
     where: { id: kegiatanId },
@@ -91,6 +113,8 @@ export async function updateKegiatanAction(
       judul,
       deskripsi: deskripsi || null,
       lokasi: lokasi || null,
+      narasumber: narasumber || null,
+      jabatanNarasumber: jabatanNarasumber || null,
       tanggalMulai,
       tanggalSelesai,
       kuota,

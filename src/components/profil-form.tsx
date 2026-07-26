@@ -17,6 +17,7 @@ export function ProfilForm({
 }: {
   defaultValues: {
     namaLengkap: string;
+    gelar: string;
     noHp: string;
     instansi: string;
     unitProdi: string;
@@ -35,6 +36,12 @@ export function ProfilForm({
         defaultValue={defaultValues.namaLengkap}
         required
         error={state.fieldErrors?.namaLengkap}
+      />
+      <TextField
+        label="Gelar (opsional)"
+        name="gelar"
+        placeholder="Contoh: S.Kom., M.T."
+        defaultValue={defaultValues.gelar}
       />
       <TextField
         label="No. HP"

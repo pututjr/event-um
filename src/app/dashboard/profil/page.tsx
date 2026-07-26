@@ -32,6 +32,7 @@ export default async function ProfilPage() {
         <ProfilForm
           defaultValues={{
             namaLengkap: peserta.namaLengkap,
+            gelar: peserta.gelar ?? "",
             noHp: peserta.noHp ?? "",
             instansi: peserta.instansi ?? "",
             unitProdi: peserta.unitProdi ?? "",

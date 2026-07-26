@@ -1,4 +1,11 @@
-import { Users, FileSpreadsheet, CalendarDays } from "lucide-react";
+import {
+  Users,
+  FileSpreadsheet,
+  CalendarDays,
+  FileText,
+  FileCog,
+  Award,
+} from "lucide-react";
 
 import { requireRole } from "@/lib/guards";
 import { PageShell } from "@/components/layout/page-shell";
@@ -19,6 +26,21 @@ const navItems: SidebarNavItem[] = [
     href: "/admin/kegiatan",
     label: "Kegiatan",
     icon: <CalendarDays className="h-4 w-4" />,
+  },
+  {
+    href: "/admin/sertifikat/template",
+    label: "Template Sertifikat",
+    icon: <FileCog className="h-4 w-4" />,
+  },
+  {
+    href: "/admin/sertifikat/generate",
+    label: "Generate Sertifikat",
+    icon: <Award className="h-4 w-4" />,
+  },
+  {
+    href: "/admin/sertifikat",
+    label: "Daftar Sertifikat",
+    icon: <FileText className="h-4 w-4" />,
   },
 ];
 

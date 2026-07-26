@@ -32,6 +32,12 @@ enum StatusPendaftaran {
   SERTIFIKAT_TERBIT
 }
 
+enum StatusSertifikat {
+  PENDING
+  GENERATED
+  FAILED
+}
+
 model User {
   id           String    @id @default(cuid())
   email        String    @unique
@@ -51,6 +57,7 @@ model Peserta {
   instansi     String?
   unitProdi    String?
   jenisPeserta JenisPeserta  @default(UMUM)
+  gelar        String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   pendaftaran  Pendaftaran[]
@@ -65,6 +72,8 @@ model Kegiatan {
   tanggalSelesai DateTime
   kuota          Int?
   status         StatusKegiatan @default(AKTIF)
+  narasumber     String?
+  jabatanNarasumber String?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   pendaftaran    Pendaftaran[]
@@ -80,6 +89,35 @@ model Pendaftaran {
   tanggalDaftar DateTime          @default(now())
   tanggalHadir  DateTime?
   catatan       String?
+  sertifikat    Sertifikat?
 
   @@unique([pesertaId, kegiatanId])
+}
+
+model SertifikatTemplate {
+  id            String       @id @default(cuid())
+  nama          String
+  jumlahHalaman Int          @default(1)
+  fileName      String
+  fileData      Bytes
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  sertifikat    Sertifikat[]
+}
+
+model Sertifikat {
+  id               String             @id @default(cuid())
+  pendaftaranId    String             @unique
+  pendaftaran      Pendaftaran        @relation(fields: [pendaftaranId], references: [id], onDelete: Cascade)
+  templateId       String
+  template         SertifikatTemplate @relation(fields: [templateId], references: [id])
+  nomorSertifikat  String             @unique
+  status           StatusSertifikat   @default(PENDING)
+  driveFileId      String?
+  driveUrl         String?
+  driveFolder      String?
+  errorMessage     String?
+  generatedAt      DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 }

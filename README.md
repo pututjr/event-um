@@ -10,6 +10,8 @@ Sistem manajemen kegiatan dan peserta untuk Universitas Negeri Malang.
 - [Tailwind CSS 4](https://tailwindcss.com/)
 - [Lucide Icons](https://lucide.dev/) — ikon di sidebar, tombol, dan stat card
 - [SheetJS (`xlsx`)](https://github.com/SheetJS/sheetjs) — import data peserta dari Excel
+- [docxtemplater](https://docxtemplater.com/) + [PizZip](https://github.com/open-xml-templating/pizzip) — isi placeholder template sertifikat (.docx)
+- [googleapis](https://github.com/googleapis/google-api-nodejs-client) — integrasi Google Drive (Service Account) untuk konversi & penyimpanan PDF sertifikat
 - [Zod](https://zod.dev/) + [React Hook Form](https://react-hook-form.com/) helpers untuk validasi
 
 > Catatan versi: Prisma sengaja dipin ke v6 (bukan v7) karena Prisma 7 mengubah cara
@@ -43,6 +45,28 @@ Prisma butuh dua connection string berbeda (lihat [.env.example](.env.example)):
 Ambil kedua string persis dari **Supabase Dashboard → Project Settings →
 Database → Connection string**, lalu ganti `<password>` dan `<region>` pada
 `.env`.
+
+## Modul Sertifikat: Google Drive (Service Account)
+
+Generate sertifikat butuh Google Service Account dengan Google Drive API
+aktif. Langkah setup:
+
+1. Buat project di [Google Cloud Console](https://console.cloud.google.com/),
+   aktifkan **Google Drive API**.
+2. Buat **Service Account**, generate key JSON.
+3. Ambil `client_email` dan `private_key` dari file JSON tsb, isi ke
+   `GOOGLE_SERVICE_ACCOUNT_EMAIL` dan `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`
+   di `.env` (lihat format di [.env.example](.env.example)).
+4. Buat/pilih folder tujuan di Google Drive, **share folder tsb ke email
+   Service Account** dengan akses "Editor", lalu isi ID foldernya ke
+   `GOOGLE_DRIVE_FOLDER_ID` (ID folder = bagian akhir URL folder Drive).
+5. (Opsional) atur format nomor sertifikat lewat `SERTIFIKAT_NOMOR_FORMAT`
+   dan `SERTIFIKAT_NOMOR_PADDING`.
+
+DOCX→PDF dikonversi lewat Google Drive sendiri (upload sebagai Google Docs,
+export sebagai PDF) — tidak perlu LibreOffice atau tool tambahan, sehingga
+tetap jalan di lingkungan serverless seperti Vercel. Detail keputusan ini
+ada di [CONTINUE.md](CONTINUE.md).
 
 ## Menjalankan secara lokal
 
@@ -144,14 +168,18 @@ src/
     admin/                  Area admin (role ADMIN)
       peserta/              CRUD peserta, import Excel
       kegiatan/             CRUD kegiatan + kelola status pendaftaran
+      sertifikat/            Template / Generate / Daftar Sertifikat
     dashboard/               Area peserta (role PESERTA)
       riwayat/               Riwayat kegiatan (status: Terdaftar/Hadir/Sertifikat Terbit)
       aktif/                 Kegiatan aktif + tombol daftar
-      sertifikat/            Placeholder "Sertifikat Saya"
+      sertifikat/            "Sertifikat Saya" - daftar & unduh
       profil/                Profil peserta + ganti password
+    api/sertifikat/[id]/download/  Route handler unduh PDF (stream dari Drive)
   lib/
     actions/                 Server Actions (mutasi data)
     validation/               Skema Zod
+    sertifikat/              Utilitas nomor sertifikat & render DOCX
+    google-drive.ts           Integrasi Google Drive (Service Account)
     prisma.ts                 Prisma client singleton
     guards.ts                  Helper otorisasi berbasis role
   auth.ts                     Konfigurasi NextAuth (credentials provider)

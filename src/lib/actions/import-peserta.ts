@@ -84,6 +84,7 @@ export async function importPesertaAction(
 
     const namaLengkap = readCell(raw, "Nama Lengkap", "nama lengkap", "Nama");
     const email = readCell(raw, "Email", "email").toLowerCase();
+    const gelar = readCell(raw, "Gelar", "gelar");
     const noHp = readCell(raw, "No HP", "no hp", "No. HP", "Telepon");
     const instansi = readCell(raw, "Instansi", "instansi");
     const unitProdi = readCell(
@@ -124,6 +125,7 @@ export async function importPesertaAction(
         peserta: {
           create: {
             namaLengkap,
+            gelar: gelar || null,
             noHp: noHp || null,
             instansi: instansi || null,
             unitProdi: unitProdi || null,

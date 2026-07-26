@@ -21,6 +21,7 @@ export async function updateProfilAction(
 
   const parsed = profilSchema.safeParse({
     namaLengkap: formData.get("namaLengkap"),
+    gelar: formData.get("gelar"),
     noHp: formData.get("noHp"),
     instansi: formData.get("instansi"),
     unitProdi: formData.get("unitProdi"),
@@ -36,12 +37,13 @@ export async function updateProfilAction(
     };
   }
 
-  const { namaLengkap, noHp, instansi, unitProdi } = parsed.data;
+  const { namaLengkap, gelar, noHp, instansi, unitProdi } = parsed.data;
 
   await prisma.peserta.update({
     where: { userId: session.user.id },
     data: {
       namaLengkap,
+      gelar: gelar || null,
       noHp: noHp || null,
       instansi: instansi || null,
       unitProdi: unitProdi || null,

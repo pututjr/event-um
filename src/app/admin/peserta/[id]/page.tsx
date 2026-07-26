@@ -56,6 +56,7 @@ export default async function PesertaDetailPage({
           defaultValues={{
             namaLengkap: peserta.namaLengkap,
             email: peserta.user.email,
+            gelar: peserta.gelar ?? "",
             noHp: peserta.noHp ?? "",
             instansi: peserta.instansi ?? "",
             unitProdi: peserta.unitProdi ?? "",

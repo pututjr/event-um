@@ -29,6 +29,7 @@ export function PesertaForm({
   defaultValues?: {
     namaLengkap?: string;
     email?: string;
+    gelar?: string;
     noHp?: string;
     instansi?: string;
     unitProdi?: string;
@@ -73,6 +74,13 @@ export function PesertaForm({
         error={state.fieldErrors?.email}
         required
         disabled={disableEmail}
+      />
+      <TextField
+        label="Gelar (opsional)"
+        name="gelar"
+        placeholder="Contoh: S.Kom., M.T."
+        defaultValue={defaultValues?.gelar}
+        error={state.fieldErrors?.gelar}
       />
       <TextField
         label="No. HP"

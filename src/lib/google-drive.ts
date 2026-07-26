@@ -1,0 +1,125 @@
+import { google } from "googleapis";
+import { Readable } from "stream";
+
+const DOCX_MIME =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const GOOGLE_DOC_MIME = "application/vnd.google-apps.document";
+const PDF_MIME = "application/pdf";
+
+function getEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(
+      `Konfigurasi Google Drive belum lengkap: environment variable ${name} belum diisi.`
+    );
+  }
+  return value;
+}
+
+function getAuth() {
+  const email = getEnv("GOOGLE_SERVICE_ACCOUNT_EMAIL");
+  const privateKey = getEnv("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY").replace(
+    /\\n/g,
+    "\n"
+  );
+
+  return new google.auth.JWT({
+    email,
+    key: privateKey,
+    scopes: ["https://www.googleapis.com/auth/drive"],
+  });
+}
+
+function getDriveClient() {
+  return google.drive({ version: "v3", auth: getAuth() });
+}
+
+export function getDefaultDriveFolderId(): string {
+  return getEnv("GOOGLE_DRIVE_FOLDER_ID");
+}
+
+function bufferToStream(buffer: Buffer): Readable {
+  return Readable.from(buffer);
+}
+
+/**
+ * Convert a filled DOCX buffer to PDF bytes using Google Drive's own
+ * conversion: upload as a Google Doc (auto-converts DOCX), export as PDF,
+ * then delete the intermediate Google Doc. Avoids needing LibreOffice,
+ * which isn't available in this serverless deployment target.
+ */
+export async function convertDocxToPdf(
+  docxBuffer: Buffer,
+  fileName: string
+): Promise<Buffer> {
+  const drive = getDriveClient();
+
+  const created = await drive.files.create({
+    requestBody: {
+      name: `~tmp-${fileName}`,
+      mimeType: GOOGLE_DOC_MIME,
+    },
+    media: {
+      mimeType: DOCX_MIME,
+      body: bufferToStream(docxBuffer),
+    },
+    fields: "id",
+  });
+
+  const tempFileId = created.data.id;
+  if (!tempFileId) {
+    throw new Error("Gagal membuat file konversi sementara di Google Drive.");
+  }
+
+  try {
+    const exported = await drive.files.export(
+      { fileId: tempFileId, mimeType: PDF_MIME },
+      { responseType: "arraybuffer" }
+    );
+    return Buffer.from(exported.data as ArrayBuffer);
+  } finally {
+    await drive.files.delete({ fileId: tempFileId }).catch(() => {
+      // Best-effort cleanup; a leftover temp file is harmless.
+    });
+  }
+}
+
+export async function uploadPdfToDrive(
+  pdfBuffer: Buffer,
+  fileName: string,
+  folderId: string
+): Promise<{ id: string; webViewLink: string }> {
+  const drive = getDriveClient();
+
+  const uploaded = await drive.files.create({
+    requestBody: {
+      name: fileName,
+      mimeType: PDF_MIME,
+      parents: [folderId],
+    },
+    media: {
+      mimeType: PDF_MIME,
+      body: bufferToStream(pdfBuffer),
+    },
+    fields: "id, webViewLink",
+  });
+
+  const id = uploaded.data.id;
+  if (!id) {
+    throw new Error("Gagal mengunggah PDF ke Google Drive.");
+  }
+
+  return {
+    id,
+    webViewLink: uploaded.data.webViewLink ?? `https://drive.google.com/file/d/${id}/view`,
+  };
+}
+
+export async function downloadDriveFileBuffer(fileId: string): Promise<Buffer> {
+  const drive = getDriveClient();
+  const res = await drive.files.get(
+    { fileId, alt: "media" },
+    { responseType: "arraybuffer" }
+  );
+  return Buffer.from(res.data as ArrayBuffer);
+}

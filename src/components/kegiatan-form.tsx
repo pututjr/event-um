@@ -29,6 +29,8 @@ export function KegiatanForm({
     judul?: string;
     deskripsi?: string;
     lokasi?: string;
+    narasumber?: string;
+    jabatanNarasumber?: string;
     tanggalMulai?: string;
     tanggalSelesai?: string;
     kuota?: string;
@@ -61,6 +63,19 @@ export function KegiatanForm({
         name="lokasi"
         defaultValue={defaultValues?.lokasi}
       />
+
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <TextField
+          label="Narasumber (opsional)"
+          name="narasumber"
+          defaultValue={defaultValues?.narasumber}
+        />
+        <TextField
+          label="Jabatan Narasumber (opsional)"
+          name="jabatanNarasumber"
+          defaultValue={defaultValues?.jabatanNarasumber}
+        />
+      </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <TextField

@@ -20,9 +20,10 @@ export default function ImportPesertaPage() {
       <ContentCard className="flex flex-col gap-4">
         <p className="max-w-xl text-sm text-slate-600">
           Kolom yang dibutuhkan: <strong>Nama Lengkap</strong>,{" "}
-          <strong>Email</strong>, No HP, Instansi, Unit/Prodi, dan Jenis
-          Peserta (MAHASISWA / DOSEN / TENDIK / UMUM). Baris dengan email yang
-          sudah terdaftar atau data tidak lengkap akan dilewati.
+          <strong>Email</strong>, Gelar (opsional), No HP, Instansi,
+          Unit/Prodi, dan Jenis Peserta (MAHASISWA / DOSEN / TENDIK / UMUM).
+          Baris dengan email yang sudah terdaftar atau data tidak lengkap akan
+          dilewati.
         </p>
         <Link
           href="/admin/peserta/import/template"

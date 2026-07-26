@@ -11,9 +11,10 @@ export async function GET() {
 
   const workbook = XLSX.utils.book_new();
   const worksheet = XLSX.utils.aoa_to_sheet([
-    ["Nama Lengkap", "Email", "No HP", "Instansi", "Unit/Prodi", "Jenis Peserta"],
+    ["Nama Lengkap", "Gelar", "Email", "No HP", "Instansi", "Unit/Prodi", "Jenis Peserta"],
     [
       "Contoh Nama Peserta",
+      "S.Kom.",
       "contoh.peserta@email.com",
       "081234567890",
       "Universitas Negeri Malang",

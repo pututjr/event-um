@@ -61,6 +61,8 @@ export default async function KegiatanDetailPage({
             judul: kegiatan.judul,
             deskripsi: kegiatan.deskripsi ?? "",
             lokasi: kegiatan.lokasi ?? "",
+            narasumber: kegiatan.narasumber ?? "",
+            jabatanNarasumber: kegiatan.jabatanNarasumber ?? "",
             tanggalMulai: toDatetimeLocalValue(kegiatan.tanggalMulai),
             tanggalSelesai: toDatetimeLocalValue(kegiatan.tanggalSelesai),
             kuota: kegiatan.kuota != null ? String(kegiatan.kuota) : "",

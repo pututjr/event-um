@@ -17,6 +17,126 @@ Jika project "Sprint 1" yang sebenarnya ternyata ada di lokasi/repo lain,
 pertimbangkan untuk membandingkan/merge alih-alih melanjutkan dari baseline
 ini.
 
+## Sprint 3 — Modul Sertifikat — Dibangun, menunggu kredensial Drive untuk verifikasi live (2026-07-27)
+
+Modul Sertifikat lengkap end-to-end sudah dibangun: Template → Generate →
+Google Drive → Sertifikat Saya. UI memakai komponen design system yang sama
+persis dari sprint sebelumnya (`PageHeader`, `ContentCard`, `StatCard`,
+`buttonVariants`, table style helpers) — tidak ada style baru.
+
+### Keputusan teknis penting: konversi DOCX→PDF lewat Google Drive
+Tidak ada LibreOffice di lingkungan pengembangan maupun target deploy
+(Vercel, serverless — tidak bisa menjalankan binary LibreOffice). Setelah
+dikonfirmasi ke pengguna, pendekatan yang dipakai:
+1. Isi placeholder `{{...}}` di file DOCX template pakai
+   [docxtemplater](https://docxtemplater.com/) + `pizzip` (murni JS, jalan di
+   mana saja).
+2. Upload DOCX hasil isi ke Google Drive **sebagai Google Docs**
+   (`mimeType: application/vnd.google-apps.document`) — Drive otomatis
+   mengonversi format.
+3. Export Google Doc tsb sebagai PDF lewat `drive.files.export`.
+4. Hapus Google Doc sementara tsb, lalu upload PDF final ke folder Drive
+   tujuan.
+
+Ini sekaligus memenuhi requirement integrasi Google Drive tanpa dependency
+tambahan. Trade-off: akurasi render bergantung pada konverter Google Docs
+(untuk layout DOCX yang sangat kompleks/presisi pixel, hasil bisa sedikit
+berbeda dari render Word/LibreOffice asli).
+
+### Skema database (tambahan minimal — 2 tabel baru + 3 kolom opsional)
+- `SertifikatTemplate` — nama, jumlahHalaman (1/2), fileName, **fileData
+  (Bytes, disimpan langsung di Postgres)** — dipilih daripada storage
+  terpisah karena deploy target serverless (filesystem tidak persisten).
+- `Sertifikat` — 1:1 dengan `Pendaftaran` (`pendaftaranId @unique`),
+  `nomorSertifikat @unique`, `status` (`PENDING`/`GENERATED`/`FAILED`),
+  `driveFileId`/`driveUrl`/`driveFolder`/`generatedAt`/`errorMessage`.
+- Kolom baru opsional (tidak breaking, semua nullable): `Peserta.gelar`,
+  `Kegiatan.narasumber`, `Kegiatan.jabatanNarasumber` — dibutuhkan agar
+  placeholder `{{gelar}}`, `{{narasumber}}`, `{{jabatan}}` di template
+  punya sumber data. Ditambahkan juga ke form CRUD Peserta/Kegiatan, Import
+  Excel (kolom "Gelar", opsional), dan Profil peserta (self-edit).
+- Migration: `prisma/migrations/<ts>_sertifikat_module` — sudah diterapkan
+  ke Supabase (bukan cuma disiapkan).
+
+### Nomor sertifikat
+- Format dapat diatur lewat env var `SERTIFIKAT_NOMOR_FORMAT` (default
+  `{seq}/EVENT-UM/{bulanRomawi}/{tahun}`) dan `SERTIFIKAT_NOMOR_PADDING`
+  (default 3). Placeholder: `{seq}`, `{bulan}`, `{bulanRomawi}`, `{tahun}`.
+- Sequence diambil dari `count()+1` saat pertama kali sertifikat sebuah
+  pendaftaran dibuat, dengan retry-loop kecil melawan race condition, plus
+  constraint unique di kolom `nomorSertifikat` sebagai jaring pengaman
+  terakhir. Nomor **tidak berubah** saat regenerate (regenerate memakai
+  ulang nomor yang sama, hanya mengulang proses render+upload).
+
+### Generate & status
+- Sertifikat hanya bisa digenerate untuk `Pendaftaran` berstatus `HADIR`
+  atau `SERTIFIKAT_TERBIT` (sudah pernah generate — untuk regenerate).
+  Status `TERDAFTAR` ditolak dengan pesan jelas.
+- Saat generate **berhasil**: `Sertifikat.status` → `GENERATED` (plus
+  `driveFileId`/`driveUrl`/`driveFolder`/`generatedAt`), dan
+  `Pendaftaran.status` otomatis ikut menjadi `SERTIFIKAT_TERBIT` (memakai
+  enum yang sudah ada dari Sprint 2 — tidak ada perubahan pada
+  `StatusPendaftaran`).
+- Saat **gagal** (mis. kredensial Drive belum diisi): `Sertifikat.status` →
+  `FAILED` + `errorMessage` tersimpan, `Pendaftaran.status` **tidak**
+  berubah (tetap `HADIR`) sehingga aman untuk di-retry lewat "Regenerate".
+  Perilaku ini sudah diverifikasi langsung (lihat bagian Verifikasi).
+- "Generate Massal" memproses seluruh peserta `HADIR` pada satu kegiatan
+  (otomatis mencakup yang sebelumnya gagal, karena status tetap `HADIR`).
+
+### Halaman baru
+- Admin: `/admin/sertifikat/template` (kelola template),
+  `/admin/sertifikat/generate` (pilih kegiatan+template, generate satu/
+  massal), `/admin/sertifikat` (daftar semua sertifikat + regenerate).
+- Peserta: `/dashboard/sertifikat` (real, menggantikan placeholder Sprint 2)
+  — daftar sertifikat milik sendiri + tombol unduh.
+- Unduh: `/api/sertifikat/[id]/download` — route handler yang mengambil PDF
+  dari Google Drive lewat Service Account lalu stream ke browser (bukan
+  link publik Drive), supaya peserta yang tidak punya akses Drive tetap
+  bisa unduh, dan admin/peserta lain tidak bisa mengakses sertifikat orang
+  lain (dicek kepemilikan via `pendaftaran.peserta.userId`).
+
+### Env var baru (lihat `.env.example`)
+`GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`,
+`GOOGLE_DRIVE_FOLDER_ID`, `SERTIFIKAT_NOMOR_FORMAT` (opsional),
+`SERTIFIKAT_NOMOR_PADDING` (opsional).
+
+### ⚠️ Status verifikasi: pipeline lengkap tervalidasi, roundtrip Drive asli belum
+Kredensial Google Service Account **belum diisi** di `.env` pada sesi ini
+(pengguna menyatakan sudah punya kredensial dan akan mengisi sendiri, mirip
+alur Supabase). Yang sudah diverifikasi nyata terhadap database Supabase
+live:
+- Migration diterapkan, tabel `SertifikatTemplate` & `Sertifikat` ada.
+- Rendering DOCX (docxtemplater) diuji dengan file `.docx` asli buatan
+  sendiri berisi seluruh 10 placeholder — semua placeholder terganti benar
+  (diverifikasi dengan membaca ulang `word/document.xml` hasil render).
+- Upload template lewat halaman admin (disimulasikan via insert DB langsung
+  karena tool browser di sesi ini tidak bisa mengisi `<input type="file">`
+  — keterbatasan yang sama seperti dicatat di Sprint 2).
+- Alur Generate Massal dijalankan sungguhan lewat browser (dengan
+  `window.confirm` di-override via console karena headless browser
+  otomatis membatalkan dialog konfirmasi): nomor sertifikat ter-assign
+  benar (`001/EVENT-UM/VII/2026`), status berubah `PENDING`→`FAILED` tepat
+  saat panggilan Google Drive gagal karena env var kosong (pesan error
+  jelas & tampil di UI), dan **status `Pendaftaran` tetap `HADIR`** (tidak
+  ikut berubah saat generate gagal — perilaku yang benar).
+- Halaman Daftar Sertifikat menampilkan stat card & baris gagal dengan
+  benar. Data uji coba sudah dibersihkan setelah verifikasi (tidak
+  tercampur dengan data seed).
+- `npm run lint` bersih, `npm run build` sukses, seluruh 19 route (3 baru
+  untuk sertifikat + 1 route handler download) muncul dengan benar.
+
+**Belum diverifikasi (butuh kredensial Google Drive asli dari pengguna):**
+upload PDF sungguhan ke Google Drive, dan unduh sertifikat oleh peserta
+lewat `/api/sertifikat/[id]/download`. Langkah lanjutan:
+1. Isi `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`,
+   `GOOGLE_DRIVE_FOLDER_ID` di `.env` (lihat `.env.example`).
+2. Pastikan folder Drive tujuan sudah di-share ke email Service Account
+   (akses "Editor"), dan Google Drive API sudah diaktifkan di project GCP.
+3. Ulangi alur generate (upload template asli, generate satu/massal) dan
+   konfirmasi PDF muncul di folder Drive serta bisa diunduh dari halaman
+   Sertifikat Saya.
+
 ## UI Refactor — Design System "Prakerin" — Selesai (2026-07-27)
 
 Refactor tampilan murni (visual-only) di seluruh aplikasi agar konsisten
@@ -215,9 +335,12 @@ pooler ini untuk `DATABASE_URL`, bukan host direct.
 
 ## Sengaja TIDAK dikerjakan (sesuai instruksi)
 
-- **Sertifikat** — generate/desain PDF sertifikat (halaman "Sertifikat Saya"
-  baru placeholder)
-- **Google Drive** — penyimpanan/ekspor file ke Drive
+> **Update Sprint 3:** Sertifikat & Google Drive di bawah ini **sudah
+> dikerjakan** — lihat bagian "Sprint 3 — Modul Sertifikat" di atas. Dua
+> baris ini dipertahankan sebagai catatan sejarah keputusan Sprint 2.
+
+- ~~**Sertifikat** — generate/desain PDF sertifikat~~ **(selesai Sprint 3)**
+- ~~**Google Drive** — penyimpanan/ekspor file ke Drive~~ **(selesai Sprint 3)**
 - **QR Code** — absensi/verifikasi via QR
 - **Email** — pengiriman notifikasi/password otomatis via email
 - **WhatsApp** — notifikasi via WhatsApp
@@ -243,16 +366,17 @@ Peserta bisa mengganti password sendiri lewat halaman Profil.
 
 ## Saran Sprint Berikutnya
 
-- **Prioritas:** set env var produksi (`DATABASE_URL` ke host *pooler*, bukan
-  direct) di platform hosting, lalu jalankan `npm run db:migrate:deploy` di
-  sana juga. Pertimbangkan uji manual upload Excel (belum bisa diuji otomatis
-  di sesi ini).
-- Sertifikat: generate PDF (mis. template + data peserta/kegiatan), simpan
-  ke storage, ubah status pendaftaran ke `SERTIFIKAT_TERBIT` otomatis setelah
-  terbit.
+- **Prioritas:** isi kredensial Google Service Account di `.env` (lihat
+  bagian "⚠️ Status verifikasi" di Sprint 3) supaya generate sertifikat bisa
+  diverifikasi live sampai ke Google Drive & unduh peserta.
+- Set env var produksi (`DATABASE_URL` ke host *pooler*, bukan direct) +
+  kredensial Google di platform hosting, lalu jalankan
+  `npm run db:migrate:deploy` di sana juga.
 - QR Code: check-in kehadiran otomatis (ubah `TERDAFTAR` → `HADIR`).
-- Notifikasi email/WhatsApp: kirim password akun baru & pengingat kegiatan.
-- Workflow: otomasi status pendaftaran mengikuti tahapan kegiatan (mis. auto
-  `HADIR` saat check-in, auto proses sertifikat setelah kegiatan `SELESAI`).
-- Pertimbangkan uji end-to-end otomatis (Playwright) untuk form upload file,
-  yang tidak bisa diuji lewat tool browser pada sesi ini.
+- Notifikasi email/WhatsApp: kirim password akun baru & link sertifikat
+  otomatis setelah terbit.
+- Workflow: otomasi lanjutan (mis. auto `HADIR` saat check-in QR, auto
+  generate massal begitu kegiatan berstatus `SELESAI`).
+- Pertimbangkan uji end-to-end otomatis (Playwright) untuk form upload file
+  (`<input type="file">`), yang tidak bisa diuji lewat tool browser pada
+  sesi-sesi sebelumnya (Import Excel, Upload Template Sertifikat).
