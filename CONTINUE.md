@@ -17,6 +17,76 @@ Jika project "Sprint 1" yang sebenarnya ternyata ada di lokasi/repo lain,
 pertimbangkan untuk membandingkan/merge alih-alih melanjutkan dari baseline
 ini.
 
+## Sprint 2.5 — Selesai (2026-07-27)
+
+Fokus murni infrastruktur: migrasi database dari SQLite ke PostgreSQL
+(Supabase). **Tidak ada perubahan** pada UI, alur CRUD, Dashboard, Import
+Excel, atau Riwayat Kegiatan — hanya lapisan database & konfigurasi deploy.
+
+### Yang diubah
+- `prisma/schema.prisma`: `datasource db` diganti dari `sqlite` menjadi
+  `postgresql`, ditambah `directUrl = env("DIRECT_URL")` (pola standar
+  Supabase: `DATABASE_URL` lewat connection pooler untuk runtime, `DIRECT_URL`
+  koneksi langsung khusus untuk `prisma migrate`). **Struktur tabel/model
+  tidak diubah sama sekali** — hanya provider datasource.
+- Migration lama (`prisma/migrations/20260726183536_init`, dialek SQLite)
+  dihapus dan diganti migration baru bergaya PostgreSQL
+  (`prisma/migrations/20260727000000_init/migration.sql`), dihasilkan dengan
+  `prisma migrate diff --from-empty --to-schema-datamodel ... --script` —
+  perintah ini membandingkan skema secara lokal tanpa perlu koneksi database
+  live, sehingga SQL yang dihasilkan bisa diverifikasi sebelum benar-benar
+  disambungkan ke Supabase.
+- `.env.example` & `.env`: diganti ke format connection string Supabase
+  (`DATABASE_URL` pooler port 6543 + `pgbouncer=true`, `DIRECT_URL` direct
+  port 5432).
+- `package.json`: tambah script `postinstall` (`prisma generate` otomatis
+  setelah `npm install`), `db:migrate:dev`, `db:migrate:deploy`, `db:seed`,
+  `db:studio` — untuk mempermudah alur deploy production.
+- `prisma/dev.db` (file SQLite lama) dihapus dari working directory.
+- README.md: bagian Tech Stack, setup lokal, skrip, dan bagian baru
+  "Deployment ke Production (Supabase)".
+
+### Project Supabase yang digunakan
+Ditemukan project Supabase bernama **event-um**
+(ref `bhuygyygffwjunwaaodj`, region `ap-southeast-1`, Postgres 17,
+status `ACTIVE_HEALTHY`, dibuat 2026-07-26) — kemungkinan besar ini project
+yang dimaksud untuk aplikasi ini.
+
+### ⚠️ Migrasi database BELUM dijalankan secara live
+Sesuai arahan pengguna (ditanya lewat AskUserQuestion karena password
+database Supabase tidak bisa diambil lewat CLI/API — hanya bisa di-reset),
+opsi yang dipilih adalah **"Siapkan config saja, jangan migrate live"**.
+Artinya:
+- Schema, migration SQL, env template, dan script deploy sudah siap dipakai.
+- `prisma migrate deploy`/`prisma migrate dev` **belum pernah dijalankan**
+  terhadap database Supabase yang sesungguhnya — migration SQL di atas baru
+  divalidasi secara lokal (diff dari skema kosong), belum diterapkan ke
+  server.
+- **Langkah lanjutan (perlu dilakukan manusia atau sesi berikutnya dengan
+  kredensial):**
+  1. Isi `<password>` dan sesuaikan host di `.env` dengan connection string
+     asli dari Supabase Dashboard → Project Settings → Database.
+  2. Jalankan `npm run db:migrate:deploy` (atau `db:migrate:dev` untuk dev)
+     agar tabel benar-benar dibuat di Supabase.
+  3. Jalankan `npm run db:seed` bila perlu data awal.
+  4. Set env var yang sama (`DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`) di
+     platform hosting produksi.
+
+### Verifikasi Sprint 2.5
+- `npm run lint` — bersih.
+- `npm run build` — sukses (exit code 0). Build memunculkan log
+  `prisma:error ... Authentication failed` saat tahap "Generating static
+  pages" karena `.env` lokal masih placeholder tanpa password asli — ini
+  **tidak menggagalkan build**: semua route memang dirender dinamis
+  (server-rendered on demand), Next.js hanya sempat mencoba pre-render lalu
+  otomatis fallback. Log ini akan hilang begitu env var production valid.
+- Fitur Sprint 2 (CRUD Peserta, Import Excel, Dashboard Peserta, Riwayat
+  Kegiatan) **tidak diuji ulang lewat browser** pada sprint ini karena tidak
+  ada database live untuk disambungkan — tidak ada perubahan kode pada
+  fitur-fitur tersebut sama sekali, jadi risiko regresi terbatas pada
+  kesalahan konfigurasi koneksi, bukan logika aplikasi. **Wajib** dites ulang
+  end-to-end sekali database Supabase tersambung dan migration dijalankan.
+
 ## Sprint 2 — Selesai (2026-07-27)
 
 ### 1. CRUD Peserta (Admin)
@@ -100,6 +170,9 @@ Peserta bisa mengganti password sendiri lewat halaman Profil.
 
 ## Saran Sprint Berikutnya
 
+- **Prioritas:** lengkapi kredensial Supabase di `.env`/hosting lalu jalankan
+  `npm run db:migrate:deploy` + `npm run db:seed`, kemudian uji ulang seluruh
+  fitur Sprint 2 end-to-end di atas database Postgres yang sesungguhnya.
 - Sertifikat: generate PDF (mis. template + data peserta/kegiatan), simpan
   ke storage, ubah status pendaftaran ke `SERTIFIKAT_TERBIT` otomatis setelah
   terbit.
