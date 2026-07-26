@@ -52,40 +52,48 @@ Ditemukan project Supabase bernama **event-um**
 status `ACTIVE_HEALTHY`, dibuat 2026-07-26) — kemungkinan besar ini project
 yang dimaksud untuk aplikasi ini.
 
-### ⚠️ Migrasi database BELUM dijalankan secara live
-Sesuai arahan pengguna (ditanya lewat AskUserQuestion karena password
-database Supabase tidak bisa diambil lewat CLI/API — hanya bisa di-reset),
-opsi yang dipilih adalah **"Siapkan config saja, jangan migrate live"**.
-Artinya:
-- Schema, migration SQL, env template, dan script deploy sudah siap dipakai.
-- `prisma migrate deploy`/`prisma migrate dev` **belum pernah dijalankan**
-  terhadap database Supabase yang sesungguhnya — migration SQL di atas baru
-  divalidasi secara lokal (diff dari skema kosong), belum diterapkan ke
-  server.
-- **Langkah lanjutan (perlu dilakukan manusia atau sesi berikutnya dengan
-  kredensial):**
-  1. Isi `<password>` dan sesuaikan host di `.env` dengan connection string
-     asli dari Supabase Dashboard → Project Settings → Database.
-  2. Jalankan `npm run db:migrate:deploy` (atau `db:migrate:dev` untuk dev)
-     agar tabel benar-benar dibuat di Supabase.
-  3. Jalankan `npm run db:seed` bila perlu data awal.
-  4. Set env var yang sama (`DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`) di
-     platform hosting produksi.
+### ✅ Migrasi database sudah diterapkan secara live (update 2026-07-27)
 
-### Verifikasi Sprint 2.5
+Setelah pengguna mengisi `DATABASE_URL`/`DIRECT_URL` dengan connection string
+Supabase yang sebenarnya, migrasi dijalankan dan diverifikasi:
+
+- `npm run db:migrate:deploy` → migration `20260727000000_init` berhasil
+  diterapkan ke database Supabase (`aws-0-ap-southeast-1.pooler.supabase.com`).
+- Keempat tabel (`User`, `Peserta`, `Kegiatan`, `Pendaftaran`) dikonfirmasi
+  benar-benar ada dan bisa diquery lewat Prisma Client (`npm run db:verify`,
+  skrip di [scripts/verify-db.ts](scripts/verify-db.ts)), sebelum dan sesudah
+  `npm run db:seed` (0 baris → 3 User / 2 Peserta / 2 Kegiatan / 3 Pendaftaran,
+  sesuai [prisma/seed.ts](prisma/seed.ts)).
+- `npm run lint` dan `npm run build` sukses tanpa error koneksi.
+- Smoke test manual di browser (list Peserta & Kegiatan) menampilkan data
+  seed dengan benar dari Supabase.
+
+**Bug konfigurasi yang ditemukan & diperbaiki:** nilai awal yang diisi
+pengguna menempatkan koneksi **direct** (`db.<ref>.supabase.co:5432`) di
+`DATABASE_URL` — host ini tidak bisa di-*resolve* dari environment ini
+(kemungkinan besar direct connection Supabase bersifat IPv6-only, keterbatasan
+umum di banyak jaringan/hosting). Migrasi tetap berhasil karena `DIRECT_URL`
+kebetulan sudah menunjuk ke *session pooler* (IPv4). `DATABASE_URL` diperbaiki
+untuk memakai *transaction pooler* Supabase yang sama
+(`aws-0-ap-southeast-1.pooler.supabase.com:6543` + `pgbouncer=true`) —
+sesuai pola yang sudah didokumentasikan di `.env.example` sejak awal.
+Pastikan environment variable di platform hosting produksi juga memakai host
+pooler ini untuk `DATABASE_URL`, bukan host direct.
+
+### Verifikasi Sprint 2.5 (config) + migrasi live (update)
 - `npm run lint` — bersih.
-- `npm run build` — sukses (exit code 0). Build memunculkan log
-  `prisma:error ... Authentication failed` saat tahap "Generating static
-  pages" karena `.env` lokal masih placeholder tanpa password asli — ini
-  **tidak menggagalkan build**: semua route memang dirender dinamis
-  (server-rendered on demand), Next.js hanya sempat mencoba pre-render lalu
-  otomatis fallback. Log ini akan hilang begitu env var production valid.
-- Fitur Sprint 2 (CRUD Peserta, Import Excel, Dashboard Peserta, Riwayat
-  Kegiatan) **tidak diuji ulang lewat browser** pada sprint ini karena tidak
-  ada database live untuk disambungkan — tidak ada perubahan kode pada
-  fitur-fitur tersebut sama sekali, jadi risiko regresi terbatas pada
-  kesalahan konfigurasi koneksi, bukan logika aplikasi. **Wajib** dites ulang
-  end-to-end sekali database Supabase tersambung dan migration dijalankan.
+- `npm run build` — sukses (exit code 0), tanpa error koneksi setelah
+  `DATABASE_URL` diperbaiki ke host pooler yang benar.
+- Migrasi & seed sudah dijalankan terhadap Supabase sungguhan (lihat bagian
+  "✅ Migrasi database sudah diterapkan secara live" di atas).
+- Fitur Sprint 2 di-spot-check ulang lewat browser di atas database Supabase
+  yang sesungguhnya: list Peserta (2 data seed) dan list Kegiatan (2 data
+  seed) tampil benar. Tidak ada perubahan kode pada fitur-fitur Sprint 2,
+  jadi cakupan smoke test ini cukup — bukan full regression run.
+- Upload file Excel (Import Peserta) tetap belum diuji end-to-end lewat UI
+  karena tool browser di sesi ini tidak bisa mensimulasikan pemilihan file
+  pada `<input type="file">` — sama seperti dicatat di Sprint 2. Disarankan
+  uji manual oleh manusia.
 
 ## Sprint 2 — Selesai (2026-07-27)
 
@@ -170,9 +178,10 @@ Peserta bisa mengganti password sendiri lewat halaman Profil.
 
 ## Saran Sprint Berikutnya
 
-- **Prioritas:** lengkapi kredensial Supabase di `.env`/hosting lalu jalankan
-  `npm run db:migrate:deploy` + `npm run db:seed`, kemudian uji ulang seluruh
-  fitur Sprint 2 end-to-end di atas database Postgres yang sesungguhnya.
+- **Prioritas:** set env var produksi (`DATABASE_URL` ke host *pooler*, bukan
+  direct) di platform hosting, lalu jalankan `npm run db:migrate:deploy` di
+  sana juga. Pertimbangkan uji manual upload Excel (belum bisa diuji otomatis
+  di sesi ini).
 - Sertifikat: generate PDF (mis. template + data peserta/kegiatan), simpan
   ke storage, ubah status pendaftaran ke `SERTIFIKAT_TERBIT` otomatis setelah
   terbit.
