@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  PESERTA
+}
+
+enum JenisPeserta {
+  MAHASISWA
+  DOSEN
+  TENDIK
+  UMUM
+}
+
+enum StatusKegiatan {
+  AKTIF
+  SELESAI
+  DIBATALKAN
+}
+
+enum StatusPendaftaran {
+  TERDAFTAR
+  HADIR
+  SERTIFIKAT_TERBIT
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(PESERTA)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  peserta      Peserta?
+}
+
+model Peserta {
+  id           String        @id @default(cuid())
+  userId       String        @unique
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  namaLengkap  String
+  noHp         String?
+  instansi     String?
+  unitProdi    String?
+  jenisPeserta JenisPeserta  @default(UMUM)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  pendaftaran  Pendaftaran[]
+}
+
+model Kegiatan {
+  id             String         @id @default(cuid())
+  judul          String
+  deskripsi      String?
+  lokasi         String?
+  tanggalMulai   DateTime
+  tanggalSelesai DateTime
+  kuota          Int?
+  status         StatusKegiatan @default(AKTIF)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  pendaftaran    Pendaftaran[]
+}
+
+model Pendaftaran {
+  id            String            @id @default(cuid())
+  pesertaId     String
+  peserta       Peserta           @relation(fields: [pesertaId], references: [id], onDelete: Cascade)
+  kegiatanId    String
+  kegiatan      Kegiatan          @relation(fields: [kegiatanId], references: [id], onDelete: Cascade)
+  status        StatusPendaftaran @default(TERDAFTAR)
+  tanggalDaftar DateTime          @default(now())
+  tanggalHadir  DateTime?
+  catatan       String?
+
+  @@unique([pesertaId, kegiatanId])
+}
