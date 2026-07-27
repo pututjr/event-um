@@ -126,16 +126,57 @@ live:
 - `npm run lint` bersih, `npm run build` sukses, seluruh 19 route (3 baru
   untuk sertifikat + 1 route handler download) muncul dengan benar.
 
-**Belum diverifikasi (butuh kredensial Google Drive asli dari pengguna):**
-upload PDF sungguhan ke Google Drive, dan unduh sertifikat oleh peserta
-lewat `/api/sertifikat/[id]/download`. Langkah lanjutan:
-1. Isi `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`,
-   `GOOGLE_DRIVE_FOLDER_ID` di `.env` (lihat `.env.example`).
-2. Pastikan folder Drive tujuan sudah di-share ke email Service Account
-   (akses "Editor"), dan Google Drive API sudah diaktifkan di project GCP.
-3. Ulangi alur generate (upload template asli, generate satu/massal) dan
-   konfirmasi PDF muncul di folder Drive serta bisa diunduh dari halaman
-   Sertifikat Saya.
+### 🛑 Update: kredensial sudah diisi, tapi ketemu blocker nyata dari Google (2026-07-27, lanjutan)
+
+Pengguna mengisi kredensial Service Account sungguhan
+(`sim-even-drive-uploader@sim-event-503613.iam.gserviceaccount.com` +
+private key + folder ID `1ITxKB47-z5-6-08rnB_FgxB23yMItnKR`). Setelah diisi
+ke `.env`, roundtrip Drive dicoba langsung (bukan lewat browser — lewat
+skrip Node yang memanggil fungsi `convertDocxToPdf`/`uploadPdfToDrive` yang
+sama persis dengan yang dipakai server action). Hasilnya **gagal konsisten**
+dengan error asli dari Google:
+
+```
+The user's Drive storage quota has been exceeded.
+```
+
+**Penyebab (dikonfirmasi, bukan dugaan):** Service Account Google **selalu
+punya kuota penyimpanan pribadi 0 byte**. Ketika Service Account membuat
+file baru — termasuk di dalam folder "My Drive" milik akun asli yang sudah
+di-share ke Service Account dengan akses Editor — file baru itu tetap
+dianggap dimiliki oleh Service Account (bukan pemilik folder), sehingga
+langsung kena limit 0 byte tsb dan gagal. Ini sudah diuji ulang dengan
+menambahkan `parents`/`supportsAllDrives: true` pada setiap panggilan
+`files.create` (perbaikan defensif yang tetap dipertahankan di
+[src/lib/google-drive.ts](src/lib/google-drive.ts)) — tetap gagal dengan
+pesan yang sama, memastikan folder tujuan memang folder "My Drive" biasa,
+bukan Shared Drive.
+
+**Solusi yang tersedia (pilih salah satu, butuh keputusan pengguna):**
+1. **Shared Drive** — jika organisasi punya Google Workspace (berbayar):
+   buat Shared Drive, tambahkan Service Account sebagai member, pakai ID
+   folder di dalam Shared Drive itu sebagai `GOOGLE_DRIVE_FOLDER_ID`.
+   Penyimpanan Shared Drive milik organisasi, bukan akun individual, jadi
+   tidak kena limit 0 byte Service Account. Kode di `google-drive.ts` sudah
+   siap (sudah pakai `supportsAllDrives: true` di semua panggilan) — tinggal
+   ganti folder ID.
+2. **OAuth2 delegated user** (untuk akun Google personal/gratis, tidak ada
+   Shared Drive) — ganti dari Service Account ke OAuth2 di mana pemilik
+   Drive (manusia asli) memberi izin sekali via consent screen, lalu
+   aplikasi menyimpan refresh token dan upload atas nama akun tsb. Ini
+   perubahan arsitektur yang lebih besar (perlu halaman/route OAuth callback
+   + penyimpanan refresh token) — belum diimplementasikan.
+3. **Domain-wide delegation** (Google Workspace juga) — Service Account
+   "meniru" (impersonate) user asli lewat admin console, tanpa perlu Shared
+   Drive. Perlu akses Workspace admin.
+
+Tanpa salah satu di atas, upload PDF ke Drive **tidak akan pernah berhasil**
+dengan Service Account biasa — ini keterbatasan Google, bukan bug di kode
+aplikasi. Fungsi generate sudah menangani kegagalan ini dengan baik (status
+`FAILED` + pesan error, `Pendaftaran.status` tidak berubah, aman di-retry),
+jadi begitu salah satu solusi di atas diterapkan, generate akan langsung
+bisa dicoba ulang tanpa perlu perubahan kode lain (asalkan opsinya Shared
+Drive/domain delegation; opsi OAuth2 butuh kerja tambahan).
 
 ## UI Refactor — Design System "Prakerin" — Selesai (2026-07-27)
 

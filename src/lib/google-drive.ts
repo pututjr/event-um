@@ -50,20 +50,27 @@ function bufferToStream(buffer: Buffer): Readable {
  */
 export async function convertDocxToPdf(
   docxBuffer: Buffer,
-  fileName: string
+  fileName: string,
+  parentFolderId: string
 ): Promise<Buffer> {
   const drive = getDriveClient();
 
+  // The temp Google Doc must be created inside a Shared Drive folder (via
+  // `parents`), not the service account's own My Drive - service accounts
+  // have 0 bytes of personal storage quota, so an unparented create (or one
+  // parented to a regular My Drive folder) fails immediately.
   const created = await drive.files.create({
     requestBody: {
       name: `~tmp-${fileName}`,
       mimeType: GOOGLE_DOC_MIME,
+      parents: [parentFolderId],
     },
     media: {
       mimeType: DOCX_MIME,
       body: bufferToStream(docxBuffer),
     },
     fields: "id",
+    supportsAllDrives: true,
   });
 
   const tempFileId = created.data.id;
@@ -78,9 +85,11 @@ export async function convertDocxToPdf(
     );
     return Buffer.from(exported.data as ArrayBuffer);
   } finally {
-    await drive.files.delete({ fileId: tempFileId }).catch(() => {
-      // Best-effort cleanup; a leftover temp file is harmless.
-    });
+    await drive.files
+      .delete({ fileId: tempFileId, supportsAllDrives: true })
+      .catch(() => {
+        // Best-effort cleanup; a leftover temp file is harmless.
+      });
   }
 }
 
@@ -102,6 +111,7 @@ export async function uploadPdfToDrive(
       body: bufferToStream(pdfBuffer),
     },
     fields: "id, webViewLink",
+    supportsAllDrives: true,
   });
 
   const id = uploaded.data.id;
@@ -118,7 +128,7 @@ export async function uploadPdfToDrive(
 export async function downloadDriveFileBuffer(fileId: string): Promise<Buffer> {
   const drive = getDriveClient();
   const res = await drive.files.get(
-    { fileId, alt: "media" },
+    { fileId, alt: "media", supportsAllDrives: true },
     { responseType: "arraybuffer" }
   );
   return Buffer.from(res.data as ArrayBuffer);

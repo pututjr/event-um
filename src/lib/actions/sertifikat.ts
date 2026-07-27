@@ -161,8 +161,12 @@ async function performGenerate(
       Buffer.from(template.fileData),
       data
     );
-    const pdfBuffer = await convertDocxToPdf(filledDocx, `${nomor}.docx`);
     const folderId = getDefaultDriveFolderId();
+    const pdfBuffer = await convertDocxToPdf(
+      filledDocx,
+      `${nomor}.docx`,
+      folderId
+    );
     const uploaded = await uploadPdfToDrive(
       pdfBuffer,
       `Sertifikat - ${data.nama} - ${data.kegiatan}.pdf`,
