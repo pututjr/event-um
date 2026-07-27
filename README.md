@@ -194,6 +194,7 @@ src/
       peserta/              CRUD peserta, import Excel
       kegiatan/             CRUD kegiatan + kelola status pendaftaran
       sertifikat/            Template / Generate / Daftar Sertifikat
+      profil/                Ganti password akun admin
     dashboard/               Area peserta (role PESERTA)
       riwayat/               Riwayat kegiatan (status: Terdaftar/Hadir/Sertifikat Terbit)
       aktif/                 Kegiatan aktif + tombol daftar

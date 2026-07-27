@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
-import { assertRole } from "@/lib/guards";
+import { assertRole, getSession } from "@/lib/guards";
 import { profilSchema } from "@/lib/validation/profil";
 import { createClient } from "@/lib/supabase/server";
 
@@ -65,7 +65,10 @@ export async function changePasswordAction(
   _prevState: PasswordFormState,
   formData: FormData
 ): Promise<PasswordFormState> {
-  const session = await assertRole("PESERTA");
+  const session = await getSession();
+  if (!session) {
+    return { error: "Sesi Anda sudah berakhir. Silakan login ulang." };
+  }
 
   const currentPassword = formData.get("currentPassword");
   const newPassword = formData.get("newPassword");

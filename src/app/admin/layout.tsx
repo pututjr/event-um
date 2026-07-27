@@ -5,6 +5,7 @@ import {
   FileText,
   FileCog,
   Award,
+  UserCircle,
 } from "lucide-react";
 
 import { requireRole } from "@/lib/guards";
@@ -41,6 +42,11 @@ const navItems: SidebarNavItem[] = [
     href: "/admin/sertifikat",
     label: "Daftar Sertifikat",
     icon: <FileText className="h-4 w-4" />,
+  },
+  {
+    href: "/admin/profil",
+    label: "Profil",
+    icon: <UserCircle className="h-4 w-4" />,
   },
 ];
 

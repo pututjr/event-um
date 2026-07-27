@@ -17,6 +17,59 @@ Jika project "Sprint 1" yang sebenarnya ternyata ada di lokasi/repo lain,
 pertimbangkan untuk membandingkan/merge alih-alih melanjutkan dari baseline
 ini.
 
+## Perbaikan Kecil: Halaman Profil Admin + Fix Performa Produksi (2026-07-27, lanjutan)
+
+Setelah live di Vercel, ditemukan 2 masalah produksi terpisah, keduanya
+sudah diperbaiki:
+
+1. **500 Internal Server Error di seluruh situs** — env var Supabase
+   (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+   `SUPABASE_SERVICE_ROLE_KEY`) belum pernah diisi di Vercel (hanya ada di
+   `.env` lokal). `src/proxy.ts` yang jalan di setiap request langsung
+   crash saat construct Supabase client tanpa URL/key. **Bukan bug kode**,
+   murni konfigurasi env var Vercel yang belum lengkap. Setelah diisi +
+   redeploy, situs pulih. Sempat ada kendala tambahan: nilai yang diisi
+   pertama kali salah/rusak (kemungkinan ada spasi/newline nyangkut saat
+   copy-paste, tidak bisa dikonfirmasi persis karena Vercel menandai
+   variabel sebagai "Sensitive" — nilai yang sudah tersimpan **tidak bisa
+   dilihat lagi**, cuma bisa ditimpa). Solusinya timpa ulang ketiga
+   variabel dari nilai yang sudah diverifikasi bekerja, lalu redeploy.
+2. **Terasa lambat/tidak smooth dibanding Prakerin** — dua penyebab
+   ditemukan dan diperbaiki di [src/lib/guards.ts](src/lib/guards.ts) &
+   [vercel.json](vercel.json):
+   - `getAppSession()` (dipakai `requireRole`/`assertRole`/`getSession`)
+     tidak di-memoize per request. Setiap halaman dashboard peserta
+     memanggilnya dua kali (sekali dari `dashboard/layout.tsx`, sekali lagi
+     dari `getCurrentPeserta()` di masing-masing page) — masing-masing
+     panggilan melakukan network call nyata ke Supabase Auth API (bukan
+     cuma decode JWT lokal) + query Postgres. Dibungkus `cache()` dari
+     React supaya cuma dihitung sekali per request.
+   - Belum ada `vercel.json`, jadi function kemungkinan jalan di region
+     default Vercel (Amerika) sementara Supabase ada di `ap-southeast-1`
+     (Singapura) — setiap query jadi lintas benua. Ditambahkan
+     `vercel.json` dengan `"regions": ["sin1"]` supaya function jalan
+     dekat dengan database. **Ini kemungkinan besar faktor dominan**
+     (dikonfirmasi pengguna: situs jadi jauh lebih cepat setelah kedua fix
+     di-deploy).
+
+**Halaman Profil Admin (baru):** sebelumnya admin **tidak punya cara sama
+sekali** untuk ganti password sendiri lewat UI (hanya peserta yang punya
+halaman Profil dengan form ganti password). Ditambahkan
+[src/app/admin/profil/page.tsx](src/app/admin/profil/page.tsx) — menampilkan
+email akun + form ganti password, dipasang di sidebar admin. Untuk ini,
+`changePasswordAction` di [src/lib/actions/profil.ts](src/lib/actions/profil.ts)
+diubah dari `assertRole("PESERTA")` (hard-coded, memblokir admin) menjadi
+`getSession()` yang menerima siapa pun yang sedang login — ganti password
+sendiri memang seharusnya tidak bergantung role. `updateProfilAction`
+(field profil peserta seperti nama/instansi) tetap `assertRole("PESERTA")`
+karena field-field itu memang spesifik milik peserta, tidak relevan untuk
+admin.
+
+Diverifikasi live: ganti password admin dari `/admin/profil`, logout,
+login ulang dengan password baru — berhasil. Password admin dikembalikan
+ke `Admin123!` setelah verifikasi supaya tetap sesuai kredensial default
+yang didokumentasikan.
+
 ## Migrasi Arsitektur: NextAuth → Supabase Auth + Template Sertifikat ke Drive (2026-07-27, lanjutan)
 
 Pengguna memberikan dokumen arsitektur baku untuk project ini (awalnya
