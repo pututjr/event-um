@@ -1,15 +1,37 @@
-import bcrypt from "bcryptjs";
-
 import { prisma } from "../src/lib/prisma";
+import { createAdminClient } from "../src/lib/supabase/admin";
+
+const supabase = createAdminClient();
+
+async function findAuthUserByEmail(email: string) {
+  const { data, error } = await supabase.auth.admin.listUsers();
+  if (error) throw error;
+  return data.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+}
+
+async function ensureAuthUser(email: string, password: string) {
+  const { data, error } = await supabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+
+  if (!error && data.user) return data.user;
+
+  const existing = await findAuthUserByEmail(email);
+  if (existing) return existing;
+
+  throw error ?? new Error(`Gagal membuat/menemukan akun ${email}`);
+}
 
 async function main() {
-  const adminPasswordHash = await bcrypt.hash("Admin123!", 10);
+  const adminAuthUser = await ensureAuthUser("admin@um.ac.id", "Admin123!");
   await prisma.user.upsert({
     where: { email: "admin@um.ac.id" },
-    update: {},
+    update: { id: adminAuthUser.id },
     create: {
+      id: adminAuthUser.id,
       email: "admin@um.ac.id",
-      passwordHash: adminPasswordHash,
       role: "ADMIN",
     },
   });
@@ -33,15 +55,16 @@ async function main() {
     },
   ];
 
-  const pesertaPasswordHash = await bcrypt.hash("Peserta123!", 10);
   const pesertaRecords = [];
   for (const p of pesertaSeed) {
+    const authUser = await ensureAuthUser(p.email, "Peserta123!");
+
     const user = await prisma.user.upsert({
       where: { email: p.email },
-      update: {},
+      update: { id: authUser.id },
       create: {
+        id: authUser.id,
         email: p.email,
-        passwordHash: pesertaPasswordHash,
         role: "PESERTA",
       },
     });

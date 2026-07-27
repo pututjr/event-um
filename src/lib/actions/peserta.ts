@@ -2,13 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { assertRole } from "@/lib/guards";
 import { generateTempPassword } from "@/lib/password";
 import { pesertaSchema } from "@/lib/validation/peserta";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type PesertaFormState = {
   error?: string;
@@ -58,25 +58,43 @@ export async function createPesertaAction(
   }
 
   const tempPassword = generateTempPassword();
-  const passwordHash = await bcrypt.hash(tempPassword, 10);
+  const supabase = createAdminClient();
 
-  await prisma.user.create({
-    data: {
-      email,
-      passwordHash,
-      role: "PESERTA",
-      peserta: {
-        create: {
-          namaLengkap,
-          gelar: gelar || null,
-          noHp: noHp || null,
-          instansi: instansi || null,
-          unitProdi: unitProdi || null,
-          jenisPeserta,
+  const { data, error } = await supabase.auth.admin.createUser({
+    email,
+    password: tempPassword,
+    email_confirm: true,
+  });
+
+  if (error || !data.user) {
+    return {
+      error: `Gagal membuat akun peserta: ${error?.message ?? "unknown error"}`,
+      fieldErrors: { email: "Email sudah digunakan" },
+    };
+  }
+
+  try {
+    await prisma.user.create({
+      data: {
+        id: data.user.id,
+        email,
+        role: "PESERTA",
+        peserta: {
+          create: {
+            namaLengkap,
+            gelar: gelar || null,
+            noHp: noHp || null,
+            instansi: instansi || null,
+            unitProdi: unitProdi || null,
+            jenisPeserta,
+          },
         },
       },
-    },
-  });
+    });
+  } catch (e) {
+    await supabase.auth.admin.deleteUser(data.user.id).catch(() => {});
+    throw e;
+  }
 
   revalidatePath("/admin/peserta");
 
@@ -110,6 +128,20 @@ export async function updatePesertaAction(
   });
   if (!peserta) {
     return { error: "Peserta tidak ditemukan." };
+  }
+
+  if (email !== peserta.user.email) {
+    const supabase = createAdminClient();
+    const { error } = await supabase.auth.admin.updateUserById(
+      peserta.userId,
+      { email }
+    );
+    if (error) {
+      return {
+        error: "Email sudah digunakan oleh pengguna lain.",
+        fieldErrors: { email: "Email sudah digunakan" },
+      };
+    }
   }
 
   try {
@@ -162,12 +194,13 @@ export async function resetPasswordAction(
   }
 
   const tempPassword = generateTempPassword();
-  const passwordHash = await bcrypt.hash(tempPassword, 10);
-
-  await prisma.user.update({
-    where: { id: peserta.userId },
-    data: { passwordHash },
+  const supabase = createAdminClient();
+  const { error } = await supabase.auth.admin.updateUserById(peserta.userId, {
+    password: tempPassword,
   });
+  if (error) {
+    throw new Error(`Gagal reset password: ${error.message}`);
+  }
 
   return { password: tempPassword };
 }
@@ -182,6 +215,10 @@ export async function deletePesertaAction(pesertaId: string) {
     redirect("/admin/peserta");
   }
 
+  const supabase = createAdminClient();
+  await supabase.auth.admin.deleteUser(peserta.userId).catch(() => {
+    // If the auth user is already gone, still clean up our own row below.
+  });
   await prisma.user.delete({ where: { id: peserta.userId } });
 
   revalidatePath("/admin/peserta");

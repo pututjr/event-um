@@ -1,13 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import bcrypt from "bcryptjs";
 import * as XLSX from "xlsx";
 import type { JenisPeserta } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { assertRole } from "@/lib/guards";
 import { generateTempPassword } from "@/lib/password";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type ImportSkipped = {
   row: number;
@@ -72,7 +72,7 @@ export async function importPesertaAction(
   }
 
   const tempPassword = generateTempPassword();
-  const passwordHash = await bcrypt.hash(tempPassword, 10);
+  const supabase = createAdminClient();
 
   const skipped: ImportSkipped[] = [];
   const seenEmails = new Set<string>();
@@ -117,23 +117,44 @@ export async function importPesertaAction(
       continue;
     }
 
-    await prisma.user.create({
-      data: {
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password: tempPassword,
+      email_confirm: true,
+    });
+    if (error || !data.user) {
+      skipped.push({
+        row: rowNum,
         email,
-        passwordHash,
-        role: "PESERTA",
-        peserta: {
-          create: {
-            namaLengkap,
-            gelar: gelar || null,
-            noHp: noHp || null,
-            instansi: instansi || null,
-            unitProdi: unitProdi || null,
-            jenisPeserta,
+        reason: `Gagal membuat akun: ${error?.message ?? "unknown error"}`,
+      });
+      continue;
+    }
+
+    try {
+      await prisma.user.create({
+        data: {
+          id: data.user.id,
+          email,
+          role: "PESERTA",
+          peserta: {
+            create: {
+              namaLengkap,
+              gelar: gelar || null,
+              noHp: noHp || null,
+              instansi: instansi || null,
+              unitProdi: unitProdi || null,
+              jenisPeserta,
+            },
           },
         },
-      },
-    });
+      });
+    } catch {
+      await supabase.auth.admin.deleteUser(data.user.id).catch(() => {});
+      skipped.push({ row: rowNum, email, reason: "Gagal menyimpan data peserta" });
+      continue;
+    }
+
     seenEmails.add(email);
     created++;
   }

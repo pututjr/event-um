@@ -1,11 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import bcrypt from "bcryptjs";
 
 import { prisma } from "@/lib/prisma";
 import { assertRole } from "@/lib/guards";
 import { profilSchema } from "@/lib/validation/profil";
+import { createClient } from "@/lib/supabase/server";
 
 export type ProfilFormState = {
   error?: string;
@@ -90,23 +90,22 @@ export async function changePasswordAction(
     return { error: "Konfirmasi password baru tidak sama." };
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-  });
-  if (!user) {
-    return { error: "Pengguna tidak ditemukan." };
-  }
+  const supabase = await createClient();
 
-  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
-  if (!valid) {
+  const { error: verifyError } = await supabase.auth.signInWithPassword({
+    email: session.user.email,
+    password: currentPassword,
+  });
+  if (verifyError) {
     return { error: "Password saat ini salah." };
   }
 
-  const passwordHash = await bcrypt.hash(newPassword, 10);
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { passwordHash },
+  const { error: updateError } = await supabase.auth.updateUser({
+    password: newPassword,
   });
+  if (updateError) {
+    return { error: "Gagal memperbarui password. Coba lagi." };
+  }
 
   return { success: true };
 }

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 
-import { auth } from "@/auth";
+import { getSession } from "@/lib/guards";
 
 export async function GET() {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user || session.user.role !== "ADMIN") {
     return new NextResponse("Unauthorized", { status: 401 });
   }

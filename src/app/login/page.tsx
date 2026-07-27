@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { CalendarRange } from "lucide-react";
 
-import { auth } from "@/auth";
+import { getSession } from "@/lib/guards";
 import { LoginForm } from "@/components/login-form";
 
 export default async function LoginPage() {
-  const session = await auth();
+  const session = await getSession();
 
   if (session?.user) {
     redirect(session.user.role === "ADMIN" ? "/admin/peserta" : "/dashboard");

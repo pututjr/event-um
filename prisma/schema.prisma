@@ -38,14 +38,16 @@ enum StatusSertifikat {
   FAILED
 }
 
+// id is NOT auto-generated - it must equal the Supabase Auth user's id
+// (auth.users.id) so profile/role data here stays linked to the Supabase
+// Auth account that owns login/password.
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  passwordHash String
-  role         Role      @default(PESERTA)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  peserta      Peserta?
+  id        String   @id
+  email     String   @unique
+  role      Role     @default(PESERTA)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  peserta   Peserta?
 }
 
 model Peserta {
@@ -94,12 +96,17 @@ model Pendaftaran {
   @@unique([pesertaId, kegiatanId])
 }
 
+// The .docx file itself lives in Google Drive - only metadata is kept here
+// (Google Drive is the source of truth for files, Postgres/Supabase for
+// application data).
 model SertifikatTemplate {
   id            String       @id @default(cuid())
   nama          String
   jumlahHalaman Int          @default(1)
   fileName      String
-  fileData      Bytes
+  mimeType      String
+  driveFileId   String
+  driveUrl      String?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   sertifikat    Sertifikat[]

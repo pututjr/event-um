@@ -17,6 +17,120 @@ Jika project "Sprint 1" yang sebenarnya ternyata ada di lokasi/repo lain,
 pertimbangkan untuk membandingkan/merge alih-alih melanjutkan dari baseline
 ini.
 
+## Migrasi Arsitektur: NextAuth → Supabase Auth + Template Sertifikat ke Drive (2026-07-27, lanjutan)
+
+Pengguna memberikan dokumen arsitektur baku untuk project ini (awalnya
+terlihat seperti arsitektur project lain — React+Express+Railway+Supabase
+Auth — tapi setelah dikonfirmasi, yang dimaksud adalah: **tetap Next.js App
+Router fullstack**, hanya **authentication-nya yang diganti ke Supabase
+Auth**, dan **penyimpanan file mengikuti prinsip "Google Drive = source of
+truth untuk file, Supabase hanya metadata"**). Dua keputusan desain
+dikonfirmasi ke pengguna sebelum eksekusi (lihat riwayat percakapan):
+1. Role/profil peserta tetap di tabel Prisma (`User`/`Peserta`), tapi
+   `User.id` disamakan dengan id akun `auth.users` Supabase.
+2. Template Sertifikat (.docx) juga dipindah ke Google Drive — tabel
+   `SertifikatTemplate` sekarang hanya simpan metadata.
+
+### Yang diubah
+
+**Auth (NextAuth v5 dihapus total, diganti Supabase Auth):**
+- Uninstall `next-auth`, `bcryptjs`; install `@supabase/supabase-js`,
+  `@supabase/ssr`.
+- Hapus: `src/auth.ts`, `src/app/api/auth/[...nextauth]/route.ts`,
+  `src/types/next-auth.d.ts`.
+- Baru: [src/lib/supabase/server.ts](src/lib/supabase/server.ts) (client
+  untuk Server Components/Actions, pakai cookies), 
+  [src/lib/supabase/admin.ts](src/lib/supabase/admin.ts) (service-role
+  client, server-only, untuk Admin API: buat/hapus/reset password akun
+  peserta), dan [src/proxy.ts](src/proxy.ts) (proxy = middleware di Next.js
+  16, refresh sesi Supabase di setiap request).
+- [src/lib/guards.ts](src/lib/guards.ts) ditulis ulang: `requireRole`/
+  `assertRole` sekarang memanggil `supabase.auth.getUser()` lalu join ke
+  tabel Prisma `User` by id untuk ambil role. Menambahkan `getSession()`
+  untuk dipakai di halaman yang cuma perlu cek sesi (login page, root
+  page, download route, template Excel route) — semuanya mengembalikan
+  bentuk `{ user: { id, email, role } }` yang sama seperti sebelumnya
+  supaya seluruh call site (`session.user.id` dst.) tidak perlu diubah.
+- `loginAction`/`logoutAction` ([src/lib/actions/auth.ts](src/lib/actions/auth.ts))
+  pakai `supabase.auth.signInWithPassword`/`signOut`. Bentuk `LoginState`
+  & signature tidak berubah — `login-form.tsx` tidak disentuh.
+- `changePasswordAction` verifikasi password lama via
+  `signInWithPassword` ulang, lalu `supabase.auth.updateUser({password})`.
+- Peserta CRUD ([src/lib/actions/peserta.ts](src/lib/actions/peserta.ts),
+  [import-peserta.ts](src/lib/actions/import-peserta.ts)): create pakai
+  `supabase.auth.admin.createUser` (email+password sementara,
+  `email_confirm: true`), lalu `prisma.user.create({ id: authUser.id, ... })`
+  — kalau insert Prisma gagal setelah user Supabase berhasil dibuat, user
+  Supabase-nya dihapus lagi (rollback manual, tidak ada distributed
+  transaction antara Supabase Auth dan Postgres). Update email pakai
+  `admin.updateUserById`. Reset password pakai `admin.updateUserById({password})`.
+  Delete pakai `admin.deleteUser` + `prisma.user.delete` (cascade ke
+  Peserta/Pendaftaran/Sertifikat seperti biasa).
+- Import Excel massal jadi lebih lambat dari sebelumnya karena tiap baris
+  sekarang melakukan 1 network call nyata ke Supabase Admin API (dulu cuma
+  `bcrypt.hash` lokal) — trade-off yang melekat pada pindah ke auth
+  provider eksternal, bukan bug.
+- `prisma/seed.ts` ditulis ulang: bikin akun demo (admin + 2 peserta) lewat
+  `supabase.auth.admin.createUser` (idempotent — kalau email sudah ada,
+  cari user existing lewat `listUsers()`), baru insert/upsert Prisma `User`
+  dengan `id` yang sama.
+
+**Skema Prisma:**
+- `User`: kolom `passwordHash` dihapus, `id` tidak lagi `@default(cuid())`
+  (harus selalu diisi eksplisit = id Supabase Auth).
+- `SertifikatTemplate`: kolom `fileData Bytes` dihapus, ganti jadi
+  `driveFileId String`, `driveUrl String?`, `mimeType String` — file
+  `.docx` sekarang betul-betul disimpan di Google Drive, bukan Postgres.
+- Migration: `prisma/migrations/20260727010000_supabase_auth_and_drive_templates`.
+  **Catatan teknis:** `prisma migrate dev` gagal karena shadow database
+  tidak bisa dibuat lewat koneksi pooler Supabase (keterbatasan permission
+  yang umum terjadi) — solusinya sama seperti migrasi Postgres sebelumnya:
+  generate SQL dengan `prisma migrate diff --from-url ... --to-schema-datamodel ...`,
+  terapkan manual lewat `prisma db execute`, lalu `prisma migrate resolve --applied`
+  supaya riwayat migrasi tetap konsisten untuk `migrate deploy` di production.
+- Data lama (3 User seed hasil Sprint 1-3) **dihapus** sebelum reseed,
+  karena id lama (cuid) tidak mungkin cocok dengan id akun Supabase Auth
+  mana pun — semua cuma data seed/demo, tidak ada data pengguna sungguhan
+  yang hilang.
+
+**Google Drive (`src/lib/google-drive.ts`):**
+- `uploadPdfToDrive` digeneralisasi jadi `uploadFileToDrive(buffer, name, mimeType, folderId)`;
+  `uploadPdfToDrive`/`uploadDocxToDrive` sekarang tinggal wrapper tipis.
+- Tambah `deleteDriveFile(fileId)` — dipakai saat admin menghapus template
+  (file di Drive ikut dihapus, bukan cuma barisnya di Postgres).
+- `uploadTemplateAction` ([src/lib/actions/sertifikat.ts](src/lib/actions/sertifikat.ts))
+  sekarang upload `.docx` ke Drive dulu, baru simpan metadata. `performGenerate`
+  men-download template dari Drive (`downloadDriveFileBuffer`) alih-alih baca
+  `template.fileData`.
+
+### Verifikasi (live, terhadap Supabase Auth + Postgres sungguhan)
+- `npm run lint` bersih, `npm run build` sukses (19 route sama seperti
+  sebelumnya, tanpa route `/api/auth/[...nextauth]` lagi, plus 1 Proxy
+  terdaftar).
+- Migration diterapkan ke database Supabase live, tabel lama (3 seed User)
+  dibersihkan, seed baru berhasil membuat akun lewat Supabase Auth
+  sungguhan.
+- **Login admin & peserta** (via `supabase.auth.signInWithPassword`) — sukses.
+- **Buat peserta baru** dari UI admin (`/admin/peserta/baru`) — akun
+  Supabase Auth beneran ter-buat, langsung bisa dipakai login.
+- **Login sebagai peserta baru** dengan password sementara hasil create — sukses,
+  redirect ke dashboard sesuai role.
+- **Ganti password** (dari halaman Profil peserta) — verifikasi password
+  lama + update ke Supabase Auth sukses; **login ulang dengan password
+  baru dikonfirmasi berhasil**.
+- **Hapus peserta** dari admin — akun Supabase Auth & baris Prisma
+  keduanya terhapus, muncul kembali di daftar dengan jumlah berkurang.
+- Upload Template Sertifikat lewat UI **belum** diuji end-to-end (tool
+  browser di sesi ini tidak bisa mengisi `<input type="file">`, sama
+  seperti keterbatasan yang dicatat berulang kali sebelumnya) — logika
+  kode sudah direview manual dan konsisten dengan pola Peserta CRUD.
+
+### Belum diverifikasi / masih ada dari sebelumnya
+Blocker Google Drive quota (service account 0-byte storage) yang dicatat
+di bagian Sprint 3 di bawah **masih berlaku** — belum berubah oleh migrasi
+ini. Begitu pengguna memberikan folder ID Shared Drive yang benar, baru
+upload PDF sertifikat sungguhan bisa diverifikasi live.
+
 ## Sprint 3 — Modul Sertifikat — Dibangun, menunggu kredensial Drive untuk verifikasi live (2026-07-27)
 
 Modul Sertifikat lengkap end-to-end sudah dibangun: Template → Generate →

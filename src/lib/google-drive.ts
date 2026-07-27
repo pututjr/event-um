@@ -93,9 +93,10 @@ export async function convertDocxToPdf(
   }
 }
 
-export async function uploadPdfToDrive(
-  pdfBuffer: Buffer,
+export async function uploadFileToDrive(
+  buffer: Buffer,
   fileName: string,
+  mimeType: string,
   folderId: string
 ): Promise<{ id: string; webViewLink: string }> {
   const drive = getDriveClient();
@@ -103,12 +104,12 @@ export async function uploadPdfToDrive(
   const uploaded = await drive.files.create({
     requestBody: {
       name: fileName,
-      mimeType: PDF_MIME,
+      mimeType,
       parents: [folderId],
     },
     media: {
-      mimeType: PDF_MIME,
-      body: bufferToStream(pdfBuffer),
+      mimeType,
+      body: bufferToStream(buffer),
     },
     fields: "id, webViewLink",
     supportsAllDrives: true,
@@ -116,13 +117,29 @@ export async function uploadPdfToDrive(
 
   const id = uploaded.data.id;
   if (!id) {
-    throw new Error("Gagal mengunggah PDF ke Google Drive.");
+    throw new Error("Gagal mengunggah file ke Google Drive.");
   }
 
   return {
     id,
     webViewLink: uploaded.data.webViewLink ?? `https://drive.google.com/file/d/${id}/view`,
   };
+}
+
+export async function uploadPdfToDrive(
+  pdfBuffer: Buffer,
+  fileName: string,
+  folderId: string
+): Promise<{ id: string; webViewLink: string }> {
+  return uploadFileToDrive(pdfBuffer, fileName, PDF_MIME, folderId);
+}
+
+export async function uploadDocxToDrive(
+  docxBuffer: Buffer,
+  fileName: string,
+  folderId: string
+): Promise<{ id: string; webViewLink: string }> {
+  return uploadFileToDrive(docxBuffer, fileName, DOCX_MIME, folderId);
 }
 
 export async function downloadDriveFileBuffer(fileId: string): Promise<Buffer> {
@@ -132,4 +149,9 @@ export async function downloadDriveFileBuffer(fileId: string): Promise<Buffer> {
     { responseType: "arraybuffer" }
   );
   return Buffer.from(res.data as ArrayBuffer);
+}
+
+export async function deleteDriveFile(fileId: string): Promise<void> {
+  const drive = getDriveClient();
+  await drive.files.delete({ fileId, supportsAllDrives: true });
 }

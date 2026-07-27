@@ -1,8 +1,8 @@
 "use server";
 
-import { AuthError } from "next-auth";
+import { redirect } from "next/navigation";
 
-import { signIn, signOut } from "@/auth";
+import { createClient } from "@/lib/supabase/server";
 
 export type LoginState = { error?: string };
 
@@ -13,22 +13,25 @@ export async function loginAction(
   const email = formData.get("email");
   const password = formData.get("password");
 
-  try {
-    await signIn("credentials", {
-      email,
-      password,
-      redirectTo: "/",
-    });
-  } catch (error) {
-    if (error instanceof AuthError) {
-      return { error: "Email atau password salah." };
-    }
-    throw error;
+  if (typeof email !== "string" || typeof password !== "string") {
+    return { error: "Email dan password wajib diisi." };
   }
 
-  return {};
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    return { error: "Email atau password salah." };
+  }
+
+  redirect("/");
 }
 
 export async function logoutAction() {
-  await signOut({ redirectTo: "/login" });
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/login");
 }

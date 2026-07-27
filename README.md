@@ -6,7 +6,7 @@ Sistem manajemen kegiatan dan peserta untuk Universitas Negeri Malang.
 
 - [Next.js 16](https://nextjs.org) (App Router, TypeScript, Turbopack)
 - [Prisma 6](https://www.prisma.io/) + [PostgreSQL via Supabase](https://supabase.com/)
-- [Auth.js / NextAuth v5](https://authjs.dev/) — autentikasi credentials (email + password)
+- [Supabase Auth](https://supabase.com/docs/guides/auth) (`@supabase/ssr`) — autentikasi email + password; role & profil peserta tetap di tabel Prisma sendiri
 - [Tailwind CSS 4](https://tailwindcss.com/)
 - [Lucide Icons](https://lucide.dev/) — ikon di sidebar, tombol, dan stat card
 - [SheetJS (`xlsx`)](https://github.com/SheetJS/sheetjs) — import data peserta dari Excel
@@ -46,6 +46,28 @@ Ambil kedua string persis dari **Supabase Dashboard → Project Settings →
 Database → Connection string**, lalu ganti `<password>` dan `<region>` pada
 `.env`.
 
+## Autentikasi: Supabase Auth
+
+Login/password, session, dan ganti password sepenuhnya dikelola oleh
+**Supabase Auth** (bukan library auth terpisah). Role (`ADMIN`/`PESERTA`)
+dan data profil peserta tetap disimpan di tabel Prisma sendiri (`User`,
+`Peserta`) — `User.id` sengaja dibuat **sama** dengan id akun di
+`auth.users` Supabase supaya keduanya tetap terhubung.
+
+Env var yang dibutuhkan (lihat [.env.example](.env.example)), ambil dari
+**Supabase Dashboard → Project Settings → API**:
+
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — aman dipakai
+  di browser (dibatasi Row Level Security).
+- `SUPABASE_SERVICE_ROLE_KEY` — **hanya untuk server**, dipakai
+  `src/lib/supabase/admin.ts` untuk membuat/menghapus/reset password akun
+  peserta (Admin API). Jangan pernah expose ke client.
+
+Helper client ada di [src/lib/supabase](src/lib/supabase)
+(`server.ts` untuk Server Components/Actions, `admin.ts` untuk operasi
+admin), dan sesi di-refresh lewat [src/proxy.ts](src/proxy.ts) (proxy =
+middleware pada Next.js 16) di setiap request.
+
 ## Modul Sertifikat: Google Drive (Service Account)
 
 Generate sertifikat butuh Google Service Account dengan Google Drive API
@@ -78,7 +100,9 @@ ada di [CONTINUE.md](CONTINUE.md).
    ```
 
 2. Salin `.env.example` menjadi `.env`, isi `DATABASE_URL` & `DIRECT_URL`
-   dengan connection string Supabase yang sebenarnya:
+   dengan connection string Supabase, serta `NEXT_PUBLIC_SUPABASE_URL`,
+   `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` dari
+   Supabase Dashboard → Project Settings → API:
 
    ```bash
    cp .env.example .env
@@ -130,9 +154,10 @@ ada di [CONTINUE.md](CONTINUE.md).
 1. **Siapkan project Supabase** — pastikan project Postgres sudah dibuat
    (project `event-um` sudah tersedia di Supabase).
 2. **Set environment variables** di platform hosting (Vercel/lainnya):
-   `DATABASE_URL`, `DIRECT_URL` (lihat format di atas), dan `AUTH_SECRET`
-   (generate baru untuk production, jangan pakai nilai contoh/dev — misalnya
-   dengan `npx auth secret`).
+   `DATABASE_URL`, `DIRECT_URL`, `NEXT_PUBLIC_SUPABASE_URL`,
+   `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, serta
+   `GOOGLE_SERVICE_ACCOUNT_EMAIL`/`GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`/
+   `GOOGLE_DRIVE_FOLDER_ID` untuk modul Sertifikat.
 3. **Install & build** — `npm install` otomatis menjalankan `prisma generate`
    lewat hook `postinstall`, sehingga Prisma Client selalu sesuai skema
    sebelum `npm run build` dijalankan.
@@ -180,9 +205,10 @@ src/
     validation/               Skema Zod
     sertifikat/              Utilitas nomor sertifikat & render DOCX
     google-drive.ts           Integrasi Google Drive (Service Account)
+    supabase/                Client Supabase Auth (server.ts, admin.ts)
     prisma.ts                 Prisma client singleton
-    guards.ts                  Helper otorisasi berbasis role
-  auth.ts                     Konfigurasi NextAuth (credentials provider)
+    guards.ts                  Helper sesi & otorisasi berbasis role
+  proxy.ts                    Refresh sesi Supabase Auth di setiap request
 prisma/
   schema.prisma               Skema database
   seed.ts                     Skrip seed data awal

@@ -12,8 +12,14 @@ import { formatDate } from "@/lib/format";
 import {
   convertDocxToPdf,
   uploadPdfToDrive,
+  uploadDocxToDrive,
+  downloadDriveFileBuffer,
+  deleteDriveFile,
   getDefaultDriveFolderId,
 } from "@/lib/google-drive";
+
+const DOCX_MIME =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 export type TemplateFormState = {
   error?: string;
@@ -48,13 +54,17 @@ export async function uploadTemplateAction(
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
+  const folderId = getDefaultDriveFolderId();
+  const uploaded = await uploadDocxToDrive(buffer, file.name, folderId);
 
   await prisma.sertifikatTemplate.create({
     data: {
       nama: parsed.data.nama,
       jumlahHalaman: parsed.data.jumlahHalaman,
       fileName: file.name,
-      fileData: buffer,
+      mimeType: DOCX_MIME,
+      driveFileId: uploaded.id,
+      driveUrl: uploaded.webViewLink,
     },
   });
 
@@ -65,6 +75,15 @@ export async function uploadTemplateAction(
 
 export async function deleteTemplateAction(templateId: string) {
   await assertRole("ADMIN");
+
+  const template = await prisma.sertifikatTemplate.findUnique({
+    where: { id: templateId },
+  });
+  if (template) {
+    await deleteDriveFile(template.driveFileId).catch(() => {
+      // If the Drive file is already gone, still remove our own row below.
+    });
+  }
 
   await prisma.sertifikatTemplate.delete({ where: { id: templateId } });
 
@@ -157,10 +176,8 @@ async function performGenerate(
       unit: pendaftaran.peserta.unitProdi ?? "",
     };
 
-    const filledDocx = renderSertifikatDocx(
-      Buffer.from(template.fileData),
-      data
-    );
+    const templateBuffer = await downloadDriveFileBuffer(template.driveFileId);
+    const filledDocx = renderSertifikatDocx(templateBuffer, data);
     const folderId = getDefaultDriveFolderId();
     const pdfBuffer = await convertDocxToPdf(
       filledDocx,

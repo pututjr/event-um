@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { auth } from "@/auth";
+import { getSession } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { downloadDriveFileBuffer } from "@/lib/google-drive";
 
@@ -8,7 +8,7 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
